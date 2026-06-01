@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Combin · Tier 1 Screens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; padding: 0; background: #f0eee9; }
+    body { font-family: 'Geist', -apple-system, sans-serif; }
+    * { box-sizing: border-box; }
+    /* keep scrollbars hidden inside artboards (DC handles its own) */
+    ::-webkit-scrollbar { width: 0; height: 0; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="primitives.jsx"></script>
+  <script type="text/babel" src="screens-onboarding.jsx"></script>
+  <script type="text/babel" src="screens-daily.jsx"></script>
+  <script type="text/babel" src="screens-planner.jsx"></script>
+  <script type="text/babel" src="screens-wardrobe.jsx"></script>
+  <script type="text/babel" src="screens-discover.jsx"></script>
+  <script type="text/babel" src="screens-education.jsx"></script>
+  <script type="text/babel" src="spec-sheets.jsx"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // Wrap each iOS screen in the device frame at iPhone 15 Pro 393×852pt.
+    // The DCArtboard is the same size as the device frame so they sit flush.
+    const PHONE_W = 402;
+    const PHONE_H = 874;
+
+    function Phone({ children, dark = false }) {
+      return (
+        <IOSDevice width={PHONE_W} height={PHONE_H} dark={dark}>
+          {children}
+        </IOSDevice>
+      );
+    }
+
+    function App() {
+      return (
+        <DesignCanvas>
+          {/* Section 0 — design rationale, written like a junior-designer note */}
+          <DCSection
+            id="rationale"
+            title="Combin · Tier 1"
+            subtitle="Round 1 — Journey 1 (onboarding) + Journey 2 (daily mirror check). 10 screens, plus system primitives, vibe-check treatment, and capture interaction notes. Notes for review pinned below."
+          >
+            <DCArtboard id="r0" label="Design system at a glance" width={520} height={874}>
+              <div style={{ width: '100%', height: '100%', background: '#fbf9f4', padding: '40px 36px', fontFamily: '"Geist", sans-serif', overflow: 'auto', color: 'oklch(0.18 0.012 60)' }}>
+                <div style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: 1.4, color: 'oklch(0.58 0.008 60)', textTransform: 'uppercase' }}>combin · round 1 · v1</div>
+                <div style={{ fontFamily: '"Newsreader", serif', fontSize: 36, lineHeight: 1.08, marginTop: 8, letterSpacing: -0.4, fontWeight: 400 }}>
+                  Quiet, confident,<br/>considered.
+                </div>
+                <div style={{ fontFamily: '"Newsreader", serif', fontSize: 16, lineHeight: 1.55, color: 'oklch(0.40 0.010 60)', marginTop: 18, maxWidth: 440, textWrap: 'pretty' }}>
+                  The brief asks for an app that feels like a text from a fashion-literate friend, not a productivity tool. So the system here is small on purpose — two typefaces, one accent, low-radius shapes, no gradients, no sparkles.
+                </div>
+                <div style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: 1.4, color: 'oklch(0.58 0.008 60)', textTransform: 'uppercase', marginTop: 26, marginBottom: 8 }}>commitments</div>
+                <ul style={{ fontFamily: '"Geist", sans-serif', fontSize: 14, lineHeight: 1.65, color: 'oklch(0.18 0.012 60)', paddingLeft: 18, margin: 0 }}>
+                  <li><b>Newsreader</b> for editorial moments · <b>Geist</b> for UI · <b>Geist Mono</b> only for tiny markers</li>
+                  <li>Warm paper background — magazine paper, not iOS system white</li>
+                  <li>One terracotta-ink accent · ≤ 2 uses per screen, never near AI copy</li>
+                  <li>Photo containers at 4px radius · capture button is the only round element</li>
+                  <li>Every photo is a striped placeholder — not a fake editorial shot</li>
+                  <li>The vibe-check one-liner has its own spec sheet (see below)</li>
+                </ul>
+                <div style={{ fontFamily: '"Geist Mono", monospace', fontSize: 10, letterSpacing: 1.4, color: 'oklch(0.58 0.008 60)', textTransform: 'uppercase', marginTop: 26, marginBottom: 8 }}>open questions, flagged</div>
+                <ul style={{ fontFamily: '"Geist", sans-serif', fontSize: 13.5, lineHeight: 1.7, color: 'oklch(0.40 0.010 60)', paddingLeft: 18, margin: 0 }}>
+                  <li>Camera shows the wardrobe icon as a corner glyph, not a fourth tab — your lean. Worth A/B if it slows new-user discovery.</li>
+                  <li>Result is currently a full-screen view, not a bottom sheet. The one-liner gets more room to be the hero — but you flagged the bottom-sheet variant as worth seeing too. Happy to add as a tweak in round 1.5.</li>
+                  <li>The "headed where?" pill is currently low-contrast and dismissible — leans dead-weight unless we find a behavior that earns it. Suggest soft-launching it dim and watching opt-in rate.</li>
+                </ul>
+              </div>
+            </DCArtboard>
+            <DCArtboard id="r1" label="Type & color" width={560} height={874}>
+              <SpecSheet />
+            </DCArtboard>
+            <DCArtboard id="r2" label="Vibe-check treatment" width={560} height={874}>
+              <VibeCheckGuide />
+            </DCArtboard>
+            <DCArtboard id="r3" label="Capture interaction" width={560} height={874}>
+              <InteractionNotes />
+            </DCArtboard>
+          </DCSection>
+
+          {/* Journey 1 — Onboarding */}
+          <DCSection
+            id="onboarding"
+            title="Journey 1 — Onboarding"
+            subtitle="First-launch through first vibe-check. The trust screen carries more weight than any other screen here."
+          >
+            <DCArtboard id="s1" label="01 · Welcome" width={PHONE_W} height={PHONE_H}>
+              <Phone><S1_Welcome /></Phone>
+            </DCArtboard>
+            <DCArtboard id="s2" label="02 · Trust & privacy" width={PHONE_W} height={PHONE_H}>
+              <Phone><S2_Trust /></Phone>
+            </DCArtboard>
+            <DCArtboard id="s3" label="03 · Taste calibration" width={PHONE_W} height={PHONE_H}>
+              <Phone><S3_Taste /></Phone>
+            </DCArtboard>
+            <DCArtboard id="s4" label="04 · Permissions" width={PHONE_W} height={PHONE_H}>
+              <Phone><S4_Permissions /></Phone>
+            </DCArtboard>
+            <DCArtboard id="s5" label="05 · First photo capture" width={PHONE_W} height={PHONE_H}>
+              <Phone dark><S5_FirstCapture /></Phone>
+            </DCArtboard>
+            <DCArtboard id="s6" label="06 · First vibe-check" width={PHONE_W} height={PHONE_H}>
+              <Phone><S6_FirstResult /></Phone>
+            </DCArtboard>
+          </DCSection>
+
+          {/* Journey 2 — Daily Mirror Check */}
+          <DCSection
+            id="daily"
+            title="Journey 2 — Daily mirror check"
+            subtitle="Camera default → capture → thinking → result. The most-used flow in the app. Timing is in the interaction-notes board above."
+          >
+            <DCArtboard id="d7" label="07 · Camera default" width={PHONE_W} height={PHONE_H}>
+              <Phone dark><S7_Camera /></Phone>
+            </DCArtboard>
+            <DCArtboard id="d7b" label="07b · Confirm context" width={PHONE_W} height={PHONE_H}>
+              <Phone dark><S7b_Confirm /></Phone>
+            </DCArtboard>
+            <DCArtboard id="d8" label="08 · Looking…" width={PHONE_W} height={PHONE_H}>
+              <Phone dark><S8_Thinking /></Phone>
+            </DCArtboard>
+            <DCArtboard id="d9" label="09 · Vibe-check" width={PHONE_W} height={PHONE_H}>
+              <Phone><S9_Result /></Phone>
+            </DCArtboard>
+            <DCArtboard id="d10" label="10 · Tell me more" width={PHONE_W} height={PHONE_H}>
+              <Phone><S10_Expanded /></Phone>
+            </DCArtboard>
+          </DCSection>
+
+          {/* Journey 3 — Outfit planner */}
+          <DCSection
+            id="planner"
+            title="Journey 3 — Outfit planner"
+            subtitle="Deliberate flow. Wardrobe-pull is the magic. Suggested-items shopping surface is opt-in, walled off from AI feedback, and the only place in the app prices appear."
+          >
+            <DCArtboard id="p1" label="11 · Plan entry" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_PlanEntry /></Phone>
+            </DCArtboard>
+            <DCArtboard id="p2" label="12 · Context capture" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_Context /></Phone>
+            </DCArtboard>
+            <DCArtboard id="p3" label="13 · Suggestions carousel" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_Suggestions /></Phone>
+            </DCArtboard>
+            <DCArtboard id="p4" label="14 · Suggestion detail" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_SuggestionDetail /></Phone>
+            </DCArtboard>
+            <DCArtboard id="p5" label="15 · Suggested items (opt-in)" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_ShopSurface /></Phone>
+            </DCArtboard>
+          </DCSection>
+
+          {/* Journey 4 — Wardrobe */}
+          <DCSection
+            id="wardrobe"
+            title="Journey 4 — Wardrobe (the user's fashion history)"
+            subtitle="Default landing is Looks — a photo grid of vibe-checks. Items mode lives behind a toggle for power users. First-visit framing sits inline on the page, no modal, no Got it button. Reached from the onboarding handoff line, or from the Wardrobe tab."
+          >
+            <DCArtboard id="w1" label="16 · Wardrobe · Looks (first visit)" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_WardrobeGrid /></Phone>
+            </DCArtboard>
+            <DCArtboard id="w1b" label="16b · Wardrobe · Items mode" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_WardrobeItems /></Phone>
+            </DCArtboard>
+            <DCArtboard id="w2" label="17 · Item detail" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_ItemDetail /></Phone>
+            </DCArtboard>
+            <DCArtboard id="w3" label="18 · Contextual correction" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_InlineCorrect /></Phone>
+            </DCArtboard>
+          </DCSection>
+
+          {/* Journey 5 — Discover */}
+          <DCSection
+            id="discover"
+            title="Journey 5 — Discover"
+            subtitle="Editorial catalog. No prices anywhere — they appear only on the retailer's site, after a deliberate click-out. Curated, opinionated, archive-friendly."
+          >
+            <DCArtboard id="dc1" label="19 · Discover home" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_DiscoverHome /></Phone>
+            </DCArtboard>
+            <DCArtboard id="dc2" label="20 · Brand page" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_BrandPage /></Phone>
+            </DCArtboard>
+            <DCArtboard id="dc3" label="21 · Item detail (no price)" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_ItemDetailDisco /></Phone>
+            </DCArtboard>
+            <DCArtboard id="dc4" label="22 · Where to find" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_WhereToFind /></Phone>
+            </DCArtboard>
+          </DCSection>
+
+          {/* Journey 6 — Education */}
+          <DCSection
+            id="education"
+            title="Journey 6 — Education"
+            subtitle="Editorial home. Daily Insight + Daily Puzzle as daily anchors. No commerce. Ever. Puzzle response is direction-language — never 'wrong.'"
+          >
+            <DCArtboard id="e1" label="23 · Education home" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_EduHome /></Phone>
+            </DCArtboard>
+            <DCArtboard id="e2" label="24 · Daily Insight" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_DailyInsight /></Phone>
+            </DCArtboard>
+            <DCArtboard id="e3" label="25 · Daily Puzzle · play" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_PuzzlePlay /></Phone>
+            </DCArtboard>
+            <DCArtboard id="e4" label="26 · Daily Puzzle · response" width={PHONE_W} height={PHONE_H}>
+              <Phone><S_PuzzleResponse /></Phone>
+            </DCArtboard>
+          </DCSection>
+
+          {/* Post-it notes pinned to the canvas */}
+          <DCPostIt x={40} y={40} w={240}>
+            <b>Round 1 deliverables</b><br/>
+            10 hi-fi screens · type/color spec · vibe-check treatment · capture interaction.<br/><br/>
+            All photography is intentionally placeholder — striped fills with monospace explainers. We commission real photography next round.
+          </DCPostIt>
+          <DCPostIt x={320} y={40} w={240}>
+            <b>What I want feedback on</b><br/>
+            1. The vibe-check sizing — does 26pt feel like a pull-quote or like a nav title?<br/>
+            2. The terracotta accent — too warm, too quiet, just right?<br/>
+            3. The capture button — circular feels right against an otherwise low-radius system; want to confirm.
+          </DCPostIt>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
