@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "combin-dev",
+    "dev": "combin-dev",
+    "prod": "combin-prod"
+  }
+}

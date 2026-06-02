@@ -1,0 +1,10 @@
+node_modules/
+lib/
+*.log
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+pubsub-debug.log
+storage-debug.log
+.runtimeconfig.json

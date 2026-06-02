@@ -27,19 +27,48 @@ final class AppState: ObservableObject {
 
 struct RootView: View {
     @StateObject private var app = AppState()
+    @EnvironmentObject private var auth: AuthService
+    private let uploader = PhotoUploadService()
 
     var body: some View {
         ZStack {
-            if app.onboarded {
-                MainShell()
-                    .transition(.opacity)
-            } else {
-                OnboardingFlow(onFinish: { app.completeOnboarding() })
-                    .transition(.opacity)
+            switch auth.state {
+            case .loading:
+                SettingUpView().transition(.opacity)
+            case .signedIn, .unavailable:
+                Group {
+                    if app.onboarded {
+                        MainShell()
+                    } else {
+                        OnboardingFlow(onFinish: { app.completeOnboarding() })
+                    }
+                }
+                .transition(.opacity)
             }
         }
         .environmentObject(app)
         .animation(.easeInOut(duration: 0.4), value: app.onboarded)
+        .animation(.easeInOut(duration: 0.4), value: auth.state)
+        // Retry any uploads that failed on a previous launch, once we have a uid.
+        .task(id: auth.uid) {
+            if let uid = auth.uid { await uploader.retryPending(uid: uid) }
+        }
+    }
+}
+
+/// First-launch only — shown while the anonymous session is being created.
+private struct SettingUpView: View {
+    var body: some View {
+        ZStack {
+            C.paper.ignoresSafeArea()
+            VStack(spacing: 12) {
+                Text("Combin")
+                    .serif(30, color: C.ink, tracking: -0.3)
+                Text("Setting things up…")
+                    .sans(14, color: C.inkSoft)
+            }
+        }
+        .preferredColorScheme(.light)
     }
 }
 
@@ -83,6 +112,7 @@ struct OnboardingFlow: View {
 // MARK: - Main shell (tab world + camera-first cover)
 
 struct MainShell: View {
+    @EnvironmentObject private var auth: AuthService
     @State private var tab = "wardrobe"
     @State private var cameraPresented = true   // camera-first on launch
 
@@ -93,6 +123,8 @@ struct MainShell: View {
                     onClose: { cameraPresented = false },
                     onGoWardrobe: { tab = "wardrobe"; cameraPresented = false }
                 )
+                // Re-inject: environment objects don't reliably cross a fullScreenCover.
+                .environmentObject(auth)
             }
     }
 }
@@ -116,52 +148,50 @@ private struct TabWorld: View {
     }
 }
 
-// MARK: - Journey 2 flow (camera → confirm → looking → result → expanded)
+// MARK: - Journey 2 flow (camera → thinking → result → expanded)
 
+/// The MVP core loop. Real capture, real Gemini orchestration via VibeCheckViewModel;
+/// the screen shown follows the view model's phase rather than a timer.
 struct CameraFlow: View {
     var onClose: () -> Void
     var onGoWardrobe: () -> Void
-    private enum Step { case camera, confirm, looking, result, expanded }
-    @State private var step: Step = .camera
+
+    @EnvironmentObject private var auth: AuthService
+    @StateObject private var vm = VibeCheckViewModel()
+    @State private var expanded = false
 
     var body: some View {
         ZStack {
-            // base layer
-            switch step {
-            case .camera:
+            switch vm.phase {
+            case .idle:
                 CameraView(
-                    onCapture: { go(.confirm) },
+                    onCapture: { image in vm.start(with: image, uid: auth.uid) },
                     onBack: onClose,
-                    onWardrobe: onGoWardrobe,
-                    onContext: { go(.confirm) }
+                    onWardrobe: onGoWardrobe
                 ).transition(.opacity)
-            case .confirm:
-                ConfirmContextView(onConfirm: { go(.looking) }, onBack: { go(.camera) })
+
+            case .processing:
+                LookingView(image: vm.capturedImage)
                     .transition(.opacity)
-            case .looking:
-                LookingView()
-                    .transition(.opacity)
-                    .task {
-                        try? await Task.sleep(nanoseconds: 1_900_000_000)
-                        go(.result)
-                    }
-            case .result, .expanded:
+
+            case .result, .failed:
                 ResultView(
-                    onClose: onClose,
-                    onTellMore: { go(.expanded) },
-                    onGoWardrobe: onGoWardrobe
+                    vm: vm,
+                    onClose: { vm.reset(); onClose() },
+                    onTellMore: { expanded = true },
+                    onGoWardrobe: { vm.reset(); onGoWardrobe() },
+                    onRetry: { vm.reset() }
                 ).transition(.opacity)
             }
 
             // expanded "tell me more" rises as a sheet over the result
-            if step == .expanded {
-                ExpandedView(onDismiss: { go(.result) })
+            if expanded {
+                ExpandedView(vm: vm, onDismiss: { expanded = false })
                     .transition(.move(edge: .bottom))
                     .zIndex(2)
             }
         }
-        .animation(.easeInOut(duration: 0.4), value: step)
+        .animation(.easeInOut(duration: 0.4), value: vm.phase)
+        .animation(.easeInOut(duration: 0.4), value: expanded)
     }
-
-    private func go(_ s: Step) { withAnimation(.easeInOut(duration: 0.4)) { step = s } }
 }

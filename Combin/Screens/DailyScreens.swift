@@ -1,10 +1,13 @@
 //  DailyScreens.swift
 //  Combin · Journey 2 — Daily mirror check
 //
-//  Camera default → capture → looking → result → expanded read. The most-used
-//  flow in the app. Ported from screens-daily.jsx.
+//  Camera default → capture → "Thinking…" → result → expanded read. The most-used
+//  flow in the app, and the heart of the MVP (the Daily Vibe Check). The camera now
+//  uses a real AVCaptureSession (with a gallery fallback), and the looking/result
+//  screens are driven by VibeCheckViewModel rather than timers + hardcoded copy.
 
 import SwiftUI
+import UIKit
 
 // MARK: - Shared chrome
 
@@ -23,17 +26,34 @@ private struct CameraControl<Content: View>: View {
 
 // MARK: - S7 · Camera default state
 
+/// Real capture. Shows a live AVCaptureSession preview where available (device), and
+/// falls back to the striped placeholder on the simulator — the gallery path works
+/// everywhere. Delivers a captured/picked `UIImage` to `onCapture`.
 struct CameraView: View {
-    var onCapture: () -> Void
+    var onCapture: (UIImage) -> Void
     var onBack: () -> Void = {}
     var onWardrobe: () -> Void = {}
-    var onContext: () -> Void = {}
+    var onContext: () -> Void = {}   // "headed where?" — reserved for post-MVP context capture
+
+    @StateObject private var camera = CameraController()
+    @State private var showPicker = false
+    @State private var capturing = false
+
+    private var liveCamera: Bool { camera.isAuthorized && camera.isAvailable }
 
     var body: some View {
         ZStack {
-            Photo(height: nil, tone: .char, label: "live viewport · front camera", radius: 0, dark: true)
-                .overlay(FrameGuide())
-                .ignoresSafeArea()
+            // viewport
+            Group {
+                if liveCamera {
+                    CameraPreview(session: camera.session).ignoresSafeArea()
+                } else {
+                    Photo(height: nil, tone: .char, label: "camera unavailable here · use the gallery",
+                          radius: 0, dark: true)
+                        .ignoresSafeArea()
+                }
+            }
+            .overlay(FrameGuide())
 
             VStack(spacing: 0) {
                 // top row — back · "headed where?" · wardrobe
@@ -62,8 +82,10 @@ struct CameraView: View {
 
                 Spacer(minLength: 0)
 
-                // first-24h cue
-                Text("Try it tomorrow morning, before you leave the house.")
+                // first-24h cue / fallback guidance
+                Text(liveCamera
+                     ? "Show me what you're wearing today."
+                     : "Pick a recent photo and I'll read the outfit.")
                     .serif(15, color: Overlay.paperWhite.opacity(0.78), tracking: -0.05, lineHeight: 1.35)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
@@ -71,15 +93,26 @@ struct CameraView: View {
 
                 // bottom row — gallery · capture · lock
                 HStack {
-                    CameraControl(size: 44) { Sym(name: "gallery-sm", size: 20, color: Overlay.paperWhite.opacity(0.85), stroke: 1.5) }
+                    Button { showPicker = true } label: {
+                        CameraControl(size: 44) { Sym(name: "gallery-sm", size: 20, color: Overlay.paperWhite.opacity(0.85), stroke: 1.5) }
+                    }.buttonStyle(.plain)
+
                     Spacer()
-                    Button(action: onCapture) {
+
+                    Button(action: capture) {
                         ZStack {
                             Circle().stroke(Overlay.paperWhite.opacity(0.92), lineWidth: 2).frame(width: 78, height: 78)
                             Circle().fill(C.accent).frame(width: 66, height: 66)
+                            if capturing {
+                                ProgressView().tint(Overlay.paperWhite)
+                            }
                         }
                         .frame(width: 78, height: 78)
-                    }.buttonStyle(.plain)
+                        .opacity(liveCamera ? 1 : 0.4)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!liveCamera || capturing)
+
                     Spacer()
                     CameraControl(size: 44, solid: false) { Sym(name: "lock", size: 16, color: Overlay.paperWhite.opacity(0.55), stroke: 1.5) }
                 }
@@ -88,11 +121,34 @@ struct CameraView: View {
         }
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
+        .task {
+            await camera.configure()
+            camera.start()
+        }
+        .onDisappear { camera.stop() }
+        .sheet(isPresented: $showPicker) {
+            PhotoPicker(onPick: { onCapture($0) })
+                .ignoresSafeArea()
+        }
+    }
+
+    private func capture() {
+        guard liveCamera, !capturing else { return }
+        capturing = true
+        Task {
+            defer { capturing = false }
+            if let image = try? await camera.capture() {
+                onCapture(image)
+            }
+        }
     }
 }
 
-// MARK: - S7b · Confirm context
+// MARK: - S7b · Confirm context  (reserved — not in the MVP core loop)
 
+/// Optional occasion/weather capture. Kept from the Tier-1 design but NOT wired into
+/// the MVP loop (the plan's core loop is camera → thinking → result). Re-route the
+/// camera's "headed where?" pill here when context capture is built post-MVP.
 struct ConfirmContextView: View {
     var onConfirm: () -> Void
     var onBack: () -> Void = {}
@@ -226,22 +282,38 @@ struct ConfirmContextView: View {
 
 // MARK: - S8 · Looking…
 
-/// "A moment, not a spinner." The serif word with a soft ink-shimmer sweep.
+/// "A moment, not a spinner." The captured photo sits frozen behind a paper sheet; a
+/// cycling serif phrase and a hairline that writes itself stand in for a spinner.
 struct LookingView: View {
+    var image: UIImage? = nil
+
+    @State private var phraseIndex = 0
+    @State private var lineProgress: CGFloat = 0
+
     var body: some View {
         ZStack {
-            Photo(height: nil, tone: .warm, label: "captured · frozen", radius: 0, dark: true)
-                .scaleEffect(0.98)
-                .overlay(Overlay.inkShadow.opacity(0.35))
-                .ignoresSafeArea()
+            background
 
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
                 VStack(alignment: .leading, spacing: 0) {
                     Capsule().fill(C.paperLine).frame(width: 36, height: 4)
                         .frame(maxWidth: .infinity).padding(.bottom, 26)
-                    ShimmerWord()
-                        .padding(.vertical, 36)
+
+                    Text(VibeVoice.loadingPhrases[phraseIndex])
+                        .serif(30, color: C.ink, tracking: -0.3, lineHeight: 1.1)
+                        .id(phraseIndex)
+                        .transition(.opacity)
+                        .padding(.bottom, 24)
+
+                    GeometryReader { geo in
+                        Rectangle()
+                            .fill(C.inkMute.opacity(0.7))
+                            .frame(width: max(0, geo.size.width * lineProgress), height: 1)
+                    }
+                    .frame(height: 1)
+                    .padding(.bottom, 26)
+
                     MonoMarker("a moment, not a spinner", tracking: 1.4)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -252,39 +324,54 @@ struct LookingView: View {
         }
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
+                lineProgress = 1
+            }
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    phraseIndex = (phraseIndex + 1) % VibeVoice.loadingPhrases.count
+                }
+            }
+        }
     }
-}
 
-private struct ShimmerWord: View {
-    @State private var phase: CGFloat = -1
-    private let word = "Looking…"
-    var body: some View {
-        Text(word)
-            .serif(32, color: C.ink, tracking: -0.3, lineHeight: 1.1)
-            .overlay {
-                GeometryReader { geo in
-                    LinearGradient(colors: [.clear, C.inkMute.opacity(0.95), .clear],
-                                   startPoint: .leading, endPoint: .trailing)
-                        .frame(width: geo.size.width)
-                        .offset(x: phase * geo.size.width)
-                }
-                .mask(Text(word).serif(32, color: .black, tracking: -0.3))
-            }
-            .onAppear {
-                withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) {
-                    phase = 1
-                }
-            }
+    @ViewBuilder private var background: some View {
+        if let image {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .overlay(Overlay.inkShadow.opacity(0.4))
+                .ignoresSafeArea()
+        } else {
+            Photo(height: nil, tone: .warm, label: "captured · frozen", radius: 0, dark: true)
+                .scaleEffect(0.98)
+                .overlay(Overlay.inkShadow.opacity(0.35))
+                .ignoresSafeArea()
+        }
     }
 }
 
 // MARK: - S9 · Vibe-check result
 
+/// The hero moment. The one-liner reveals word-by-word; the optional tweak fades in
+/// when Stage 2 lands. On a failure, the same screen carries the warm fallback copy
+/// and a single "Try another photo" action.
 struct ResultView: View {
+    @ObservedObject var vm: VibeCheckViewModel
     var onClose: () -> Void = {}
     var onShare: () -> Void = {}
-    var onTellMore: () -> Void
-    var onGoWardrobe: () -> Void
+    var onTellMore: () -> Void = {}
+    var onGoWardrobe: () -> Void = {}
+    var onRetry: () -> Void = {}
+
+    private var failureMessage: String? {
+        if case .failed(let message) = vm.phase { return message }
+        return nil
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -297,54 +384,94 @@ struct ResultView: View {
             }
             .padding(.horizontal, 20).padding(.top, 8)
 
-            Photo(height: 228, tone: .warm, label: "user outfit · contained, editorial inset")
+            outfitInset(height: 228)
                 .padding(.horizontal, 28).padding(.top, 8)
 
-            Text("Three textures, one mood. That's the trick.")
+            // hero one-liner (or the warm failure copy)
+            Text(failureMessage ?? vm.revealedText)
                 .serif(26, color: C.ink, tracking: -0.15, lineHeight: 1.22)
+                .animation(.easeOut(duration: 0.15), value: vm.revealedText)
                 .padding(.horizontal, 28).padding(.top, 32)
 
-            // tweak card — quieter, sans, with thumbnail
-            HStack(spacing: 14) {
-                Photo(width: 56, height: 68, tone: .olive, radius: R.input)
-                VStack(alignment: .leading, spacing: 6) {
-                    MonoMarker("one tweak")
-                    Text("Swap the belt for the olive one — pulls the palette tighter without changing the silhouette.")
-                        .sans(13.5, color: C.ink, lineHeight: 1.45)
+            // tweak card — only on success, only when a tweak exists
+            if failureMessage == nil, vm.tweakReady, let tweak = vm.tweakText {
+                HStack(spacing: 14) {
+                    outfitThumb()
+                    VStack(alignment: .leading, spacing: 6) {
+                        MonoMarker("one tweak")
+                        Text(tweak)
+                            .sans(13.5, color: C.ink, lineHeight: 1.45)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.init(top: 14, leading: 12, bottom: 14, trailing: 14))
+                .overlay(alignment: .top) { Rectangle().fill(C.paperLine).frame(height: 0.5) }
+                .overlay(alignment: .bottom) { Rectangle().fill(C.paperLine).frame(height: 0.5) }
+                .padding(.horizontal, 28).padding(.top, 28)
+                .transition(.opacity)
             }
-            .padding(.init(top: 14, leading: 12, bottom: 14, trailing: 14))
-            .overlay(alignment: .top) { Rectangle().fill(C.paperLine).frame(height: 0.5) }
-            .overlay(alignment: .bottom) { Rectangle().fill(C.paperLine).frame(height: 0.5) }
-            .padding(.horizontal, 28).padding(.top, 28)
 
             Spacer(minLength: 0)
 
-            // bottom action chrome — low-contrast, present but not pushing
-            Button(action: onTellMore) {
-                HStack(spacing: 8) {
-                    Text("Tell me more").font(F.sans(13)).foregroundStyle(C.inkSoft)
-                    Sym(name: "chevron-d", size: 13, color: C.inkSoft, stroke: 1.5)
+            if let _ = failureMessage {
+                Btn(title: "Try another photo", kind: .primary, action: onRetry)
+                    .padding(.horizontal, 24).padding(.bottom, 28)
+            } else {
+                Button(action: onTellMore) {
+                    HStack(spacing: 8) {
+                        Text("Tell me more").font(F.sans(13)).foregroundStyle(C.inkSoft)
+                        Sym(name: "chevron-d", size: 13, color: C.inkSoft, stroke: 1.5)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 24).padding(.bottom, 6)
+                .buttonStyle(.plain)
+                .padding(.horizontal, 24).padding(.bottom, 6)
 
-            Btn(title: "Go to the wardrobe", kind: .primary, action: onGoWardrobe)
-                .padding(.horizontal, 24).padding(.bottom, 28)
+                Btn(title: "Go to the wardrobe", kind: .primary, action: onGoWardrobe)
+                    .padding(.horizontal, 24).padding(.bottom, 28)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(C.paper.ignoresSafeArea())
         .preferredColorScheme(.light)
     }
+
+    @ViewBuilder private func outfitInset(height: CGFloat) -> some View {
+        if let image = vm.capturedImage {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(maxWidth: .infinity)
+                .frame(height: height)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: R.card))
+        } else {
+            Photo(height: height, tone: .warm, label: "user outfit · contained, editorial inset")
+        }
+    }
+
+    @ViewBuilder private func outfitThumb() -> some View {
+        if let image = vm.capturedImage {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 56, height: 68)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: R.input))
+        } else {
+            Photo(width: 56, height: 68, tone: .olive, radius: R.input)
+        }
+    }
 }
 
 // MARK: - S10 · Expanded "tell me more"
 
+/// A quieter, fuller view of what we have. The MVP doesn't generate a long-form read
+/// (the Stage 1/2 schema is the one-liner + tweak), so this shows the real one-liner
+/// and tweak rather than fabricated paragraphs.
 struct ExpandedView: View {
+    @ObservedObject var vm: VibeCheckViewModel
     var onDismiss: () -> Void
 
     var body: some View {
@@ -355,51 +482,28 @@ struct ExpandedView: View {
                 Spacer()
                 MonoMarker("a longer read")
                 Spacer()
-                Sym(name: "dots", size: 18, color: C.inkMute).frame(width: 36, height: 36)
+                Color.clear.frame(width: 36, height: 36)
             }
             .padding(.horizontal, 20).padding(.top, 8)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Three textures, one mood. That's the trick.")
+                    Text(vm.oneLiner)
                         .serif(22, color: C.ink, tracking: -0.1, lineHeight: 1.25)
                         .padding(.bottom, 18)
 
-                    Text("The wool of the trousers, the cotton of the shirt, the suede of the loafers — three surfaces that catch light differently, and the whole outfit reads richer because of it.")
-                        .serif(16, color: C.ink, lineHeight: 1.55)
-                        .padding(.bottom, 14)
-
-                    Text("You're working in a tight palette — sand, cream, brown — which is what makes the textures land. If everything were the same color in three identical fabrics, this would read flat. Instead it reads considered.")
-                        .serif(16, color: C.inkSoft, lineHeight: 1.55)
-                        .padding(.bottom, 18)
-
-                    // inline wardrobe reference
-                    HStack(spacing: 12) {
-                        Photo(width: 48, height: 58, tone: .ecru, radius: R.input)
-                        VStack(alignment: .leading, spacing: 3) {
-                            MonoMarker("from your wardrobe", tracking: 1.2)
-                            Text("The cream camp-collar shirt — last seen Apr 22.")
-                                .sans(13, color: C.ink)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        Sym(name: "chevron-r", size: 16, color: C.inkSoft, stroke: 1.6)
+                    if let tweak = vm.tweakText {
+                        MonoMarker("one tweak")
+                            .padding(.top, 6)
+                            .overlay(alignment: .top) { Rectangle().fill(C.paperLine).frame(height: 0.5) }
+                            .padding(.bottom, 10)
+                        Text(tweak)
+                            .serif(16, color: C.ink, lineHeight: 1.55)
+                            .padding(.bottom, 18)
                     }
-                    .padding(12)
-                    .background(C.paperDeep)
-                    .clipShape(RoundedRectangle(cornerRadius: R.card))
-                    .padding(.bottom, 18)
 
-                    Text("For the weather you've got — 14°, light wind — this is well-judged. You could push it warmer with the olive jacket, but you'd lose the texture story you've built.")
-                        .serif(16, color: C.ink, lineHeight: 1.55)
-                        .padding(.bottom, 14)
-
-                    MonoMarker("one to try")
-                        .padding(.top, 14)
-                        .overlay(alignment: .top) { Rectangle().fill(C.paperLine).frame(height: 0.5) }
-                        .padding(.bottom, 8)
-
-                    Text("Texture-mixing is one of the most reliable moves in menswear and one of the hardest to spot. Notice it in editorials and you'll start seeing it everywhere.")
-                        .serif(15.5, color: C.inkSoft, lineHeight: 1.55)
+                    Text("That's the gist for now — a fuller read is on its way.")
+                        .sans(13, color: C.inkMute, lineHeight: 1.5)
 
                     Color.clear.frame(height: 40)
                 }

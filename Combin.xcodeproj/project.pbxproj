@@ -23,6 +23,17 @@
 		00A0000000000000000000FB /* Newsreader.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000EB /* Newsreader.ttf */; };
 		00A0000000000000000000FC /* Geist.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000EC /* Geist.ttf */; };
 		00A0000000000000000000FD /* GeistMono.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000ED /* GeistMono.ttf */; };
+		00A0000000000000000001B1 /* FirebaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001A1 /* FirebaseConfig.swift */; };
+		00A0000000000000000001B2 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001A2 /* AuthService.swift */; };
+		00A0000000000000000001B3 /* PhotoUploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001A3 /* PhotoUploadService.swift */; };
+		00A0000000000000000001B4 /* VibeCheckService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001A4 /* VibeCheckService.swift */; };
+		00A0000000000000000001B5 /* WardrobeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001A5 /* WardrobeService.swift */; };
+		00A0000000000000000001B6 /* StyleVector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001A6 /* StyleVector.swift */; };
+		00A0000000000000000001B7 /* VibeCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001A7 /* VibeCheck.swift */; };
+		00A0000000000000000001B8 /* WardrobeItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001A8 /* WardrobeItem.swift */; };
+		00A0000000000000000001B9 /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001A9 /* CameraCaptureView.swift */; };
+		00A0000000000000000001BA /* VibeVoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001AA /* VibeVoice.swift */; };
+		00A0000000000000000001BB /* VibeCheckViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001AB /* VibeCheckViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +55,17 @@
 		00A0000000000000000000EB /* Newsreader.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Newsreader.ttf; sourceTree = "<group>"; };
 		00A0000000000000000000EC /* Geist.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Geist.ttf; sourceTree = "<group>"; };
 		00A0000000000000000000ED /* GeistMono.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = GeistMono.ttf; sourceTree = "<group>"; };
+		00A0000000000000000001A1 /* FirebaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseConfig.swift; sourceTree = "<group>"; };
+		00A0000000000000000001A2 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		00A0000000000000000001A3 /* PhotoUploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoUploadService.swift; sourceTree = "<group>"; };
+		00A0000000000000000001A4 /* VibeCheckService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VibeCheckService.swift; sourceTree = "<group>"; };
+		00A0000000000000000001A5 /* WardrobeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WardrobeService.swift; sourceTree = "<group>"; };
+		00A0000000000000000001A6 /* StyleVector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleVector.swift; sourceTree = "<group>"; };
+		00A0000000000000000001A7 /* VibeCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VibeCheck.swift; sourceTree = "<group>"; };
+		00A0000000000000000001A8 /* WardrobeItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WardrobeItem.swift; sourceTree = "<group>"; };
+		00A0000000000000000001A9 /* CameraCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
+		00A0000000000000000001AA /* VibeVoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VibeVoice.swift; sourceTree = "<group>"; };
+		00A0000000000000000001AB /* VibeCheckViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VibeCheckViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,6 +99,10 @@
 			isa = PBXGroup;
 			children = (
 				00A0000000000000000000E1 /* CombinApp.swift */,
+				00A0000000000000000001C1 /* Configuration */,
+				00A0000000000000000001C3 /* Models */,
+				00A0000000000000000001C2 /* Services */,
+				00A0000000000000000001C4 /* Features */,
 				00A0000000000000000000A5 /* DesignSystem */,
 				00A0000000000000000000A6 /* Screens */,
 				00A0000000000000000000EA /* Assets.xcassets */,
@@ -84,6 +110,61 @@
 				00A0000000000000000000E9 /* Info.plist */,
 			);
 			path = Combin;
+			sourceTree = "<group>";
+		};
+		00A0000000000000000001C1 /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				00A0000000000000000001A1 /* FirebaseConfig.swift */,
+			);
+			path = Configuration;
+			sourceTree = "<group>";
+		};
+		00A0000000000000000001C3 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				00A0000000000000000001A6 /* StyleVector.swift */,
+				00A0000000000000000001A7 /* VibeCheck.swift */,
+				00A0000000000000000001A8 /* WardrobeItem.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		00A0000000000000000001C2 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				00A0000000000000000001A2 /* AuthService.swift */,
+				00A0000000000000000001A3 /* PhotoUploadService.swift */,
+				00A0000000000000000001A4 /* VibeCheckService.swift */,
+				00A0000000000000000001A5 /* WardrobeService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		00A0000000000000000001C4 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				00A0000000000000000001C5 /* Camera */,
+				00A0000000000000000001C6 /* VibeCheckResult */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		00A0000000000000000001C5 /* Camera */ = {
+			isa = PBXGroup;
+			children = (
+				00A0000000000000000001A9 /* CameraCaptureView.swift */,
+			);
+			path = Camera;
+			sourceTree = "<group>";
+		};
+		00A0000000000000000001C6 /* VibeCheckResult */ = {
+			isa = PBXGroup;
+			children = (
+				00A0000000000000000001AA /* VibeVoice.swift */,
+				00A0000000000000000001AB /* VibeCheckViewModel.swift */,
+			);
+			path = VibeCheckResult;
 			sourceTree = "<group>";
 		};
 		00A0000000000000000000A5 /* DesignSystem */ = {
@@ -213,6 +294,17 @@
 				00A0000000000000000000B3 /* PlannerScreens.swift in Sources */,
 				00A0000000000000000000B5 /* DiscoverScreens.swift in Sources */,
 				00A0000000000000000000B6 /* EducationScreens.swift in Sources */,
+				00A0000000000000000001B1 /* FirebaseConfig.swift in Sources */,
+				00A0000000000000000001B2 /* AuthService.swift in Sources */,
+				00A0000000000000000001B3 /* PhotoUploadService.swift in Sources */,
+				00A0000000000000000001B4 /* VibeCheckService.swift in Sources */,
+				00A0000000000000000001B5 /* WardrobeService.swift in Sources */,
+				00A0000000000000000001B6 /* StyleVector.swift in Sources */,
+				00A0000000000000000001B7 /* VibeCheck.swift in Sources */,
+				00A0000000000000000001B8 /* WardrobeItem.swift in Sources */,
+				00A0000000000000000001B9 /* CameraCaptureView.swift in Sources */,
+				00A0000000000000000001BA /* VibeVoice.swift in Sources */,
+				00A0000000000000000001BB /* VibeCheckViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
