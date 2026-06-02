@@ -15,6 +15,10 @@
 		00A0000000000000000000F6 /* OnboardingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000E6 /* OnboardingScreens.swift */; };
 		00A0000000000000000000F7 /* DailyScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000E7 /* DailyScreens.swift */; };
 		00A0000000000000000000F8 /* AppFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000E8 /* AppFlow.swift */; };
+		00A0000000000000000000B3 /* PlannerScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000EE /* PlannerScreens.swift */; };
+		00A0000000000000000000B4 /* WardrobeScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000EF /* WardrobeScreens.swift */; };
+		00A0000000000000000000B5 /* DiscoverScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000FE /* DiscoverScreens.swift */; };
+		00A0000000000000000000B6 /* EducationScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000FF /* EducationScreens.swift */; };
 		00A0000000000000000000FA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000EA /* Assets.xcassets */; };
 		00A0000000000000000000FB /* Newsreader.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000EB /* Newsreader.ttf */; };
 		00A0000000000000000000FC /* Geist.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000000EC /* Geist.ttf */; };
@@ -31,6 +35,10 @@
 		00A0000000000000000000E6 /* OnboardingScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreens.swift; sourceTree = "<group>"; };
 		00A0000000000000000000E7 /* DailyScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyScreens.swift; sourceTree = "<group>"; };
 		00A0000000000000000000E8 /* AppFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFlow.swift; sourceTree = "<group>"; };
+		00A0000000000000000000EE /* PlannerScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannerScreens.swift; sourceTree = "<group>"; };
+		00A0000000000000000000EF /* WardrobeScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WardrobeScreens.swift; sourceTree = "<group>"; };
+		00A0000000000000000000FE /* DiscoverScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverScreens.swift; sourceTree = "<group>"; };
+		00A0000000000000000000FF /* EducationScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EducationScreens.swift; sourceTree = "<group>"; };
 		00A0000000000000000000E9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		00A0000000000000000000EA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		00A0000000000000000000EB /* Newsreader.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Newsreader.ttf; sourceTree = "<group>"; };
@@ -94,6 +102,10 @@
 			children = (
 				00A0000000000000000000E6 /* OnboardingScreens.swift */,
 				00A0000000000000000000E7 /* DailyScreens.swift */,
+				00A0000000000000000000EF /* WardrobeScreens.swift */,
+				00A0000000000000000000EE /* PlannerScreens.swift */,
+				00A0000000000000000000FE /* DiscoverScreens.swift */,
+				00A0000000000000000000FF /* EducationScreens.swift */,
 				00A0000000000000000000E8 /* AppFlow.swift */,
 			);
 			path = Screens;
@@ -197,6 +209,10 @@
 				00A0000000000000000000F6 /* OnboardingScreens.swift in Sources */,
 				00A0000000000000000000F7 /* DailyScreens.swift in Sources */,
 				00A0000000000000000000F8 /* AppFlow.swift in Sources */,
+				00A0000000000000000000B4 /* WardrobeScreens.swift in Sources */,
+				00A0000000000000000000B3 /* PlannerScreens.swift in Sources */,
+				00A0000000000000000000B5 /* DiscoverScreens.swift in Sources */,
+				00A0000000000000000000B6 /* EducationScreens.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -6,9 +6,11 @@ friend would text back. It's built from a Claude Design handoff in
 `Combin-handoff/` (read [Combin Tier 1.html](Combin-handoff/combin/project/Combin%20Tier%201.html)
 and its `.jsx` imports for the source designs).
 
-**Current state:** Tier 1 is implemented — Journey 1 (onboarding) + Journey 2
-(daily mirror check), on a reusable design system. Journeys 3–6 are next.
-Full status and the step-by-step plan live in [docs/handoff.md](docs/handoff.md).
+**Current state:** All six journeys (the 26 designed screens) are implemented on
+a reusable design system — onboarding, daily mirror check, planner, wardrobe,
+discover, education. What's left is Tier-3 work (settings, empty/error states)
+plus cross-cutting polish (real camera/AI/data, motion, accessibility). Full
+status and the step-by-step plan live in [docs/handoff.md](docs/handoff.md).
 
 **Layout:** `Combin/DesignSystem/` (tokens, typography, icons, components),
 `Combin/Screens/` (screens + `AppFlow.swift` navigation). Open `Combin.xcodeproj`.

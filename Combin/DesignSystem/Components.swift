@@ -241,3 +241,104 @@ struct TabBar: View {
         )
     }
 }
+
+// MARK: - Chip
+
+/// A selectable pill — transparent + hairline when off, ink-filled when on.
+/// 2px radius (input shape). Used in the planner's context chips.
+struct Chip: View {
+    var title: String
+    var on: Bool
+    var radius: CGFloat = R.input
+    var action: () -> Void = {}
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(F.sans(13, on ? .medium : .regular))
+                .foregroundStyle(on ? C.paper : C.ink)
+                .padding(.vertical, 8).padding(.horizontal, 13)
+                .background(on ? C.ink : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: radius))
+                .overlay { if !on { RoundedRectangle(cornerRadius: radius).stroke(C.paperLine, lineWidth: 0.5) } }
+        }
+        .buttonStyle(.plain)
+        .fixedSize()
+    }
+}
+
+// MARK: - SegmentedToggle
+
+/// On-brand two-up segmented control (e.g. Looks / Items). Hairline group border,
+/// ink-filled selection. 2px radius.
+struct SegmentedToggle: View {
+    var options: [String]
+    @Binding var selection: String
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options, id: \.self) { opt in
+                let on = opt == selection
+                Text(opt)
+                    .font(F.sans(12.5, on ? .medium : .regular))
+                    .foregroundStyle(on ? C.paper : C.inkSoft)
+                    .padding(.vertical, 7).padding(.horizontal, 16)
+                    .background(on ? C.ink : Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: R.input))
+                    .contentShape(Rectangle())
+                    .onTapGesture { selection = opt }
+            }
+        }
+        .overlay(RoundedRectangle(cornerRadius: R.input).stroke(C.paperLine, lineWidth: 0.5))
+        .fixedSize()
+    }
+}
+
+// MARK: - FlowLayout
+
+/// A simple wrapping layout (left-to-right, top-to-bottom) for chip rows.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 6
+    var lineSpacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxW = proposal.width ?? .infinity
+        var x: CGFloat = 0, y: CGFloat = 0, rowH: CGFloat = 0
+        for s in subviews {
+            let sz = s.sizeThatFits(.unspecified)
+            if x > 0, x + sz.width > maxW { x = 0; y += rowH + lineSpacing; rowH = 0 }
+            x += sz.width + spacing
+            rowH = max(rowH, sz.height)
+        }
+        return CGSize(width: maxW.isFinite ? maxW : x, height: y + rowH)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let maxW = bounds.width
+        var x: CGFloat = bounds.minX, y: CGFloat = bounds.minY, rowH: CGFloat = 0
+        for s in subviews {
+            let sz = s.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + sz.width > bounds.minX + maxW { x = bounds.minX; y += rowH + lineSpacing; rowH = 0 }
+            s.place(at: CGPoint(x: x, y: y), anchor: .topLeading, proposal: ProposedViewSize(sz))
+            x += sz.width + spacing
+            rowH = max(rowH, sz.height)
+        }
+    }
+}
+
+// MARK: - PageDots
+
+/// Carousel page indicator — the active dot stretches into a short bar.
+struct PageDots: View {
+    var count: Int
+    var index: Int
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<count, id: \.self) { i in
+                Capsule()
+                    .fill(i == index ? C.ink : C.paperLine)
+                    .frame(width: i == index ? 16 : 5, height: 5)
+            }
+        }
+    }
+}

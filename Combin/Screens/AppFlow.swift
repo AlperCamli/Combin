@@ -97,73 +97,22 @@ struct MainShell: View {
     }
 }
 
-/// The non-camera tabs. Journeys 3–6 are next round; each tab shows an on-brand
-/// placeholder so the reusable TabBar is fully wired.
+/// The non-camera tabs. Each tab is its own self-contained journey flow that
+/// embeds the reusable `TabBar` on its root screen and drives its own internal
+/// navigation (details, sheets). Switching tabs swaps the whole flow.
 private struct TabWorld: View {
     @Binding var tab: String
     var onCapture: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            PlaceholderJourney(tab: tab)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            TabBar(active: tab,
-                   onSelect: { tab = $0 },
-                   onCapture: onCapture)
-        }
-        .background(C.paper.ignoresSafeArea())
-        .preferredColorScheme(.light)
-    }
-}
-
-private struct PlaceholderJourney: View {
-    var tab: String
-
-    private var title: String {
-        switch tab {
-        case "discover": return "Discover"
-        case "edu":      return "Education"
-        case "planner":  return "Planner"
-        default:          return "Wardrobe"
-        }
-    }
-    private var blurb: String {
-        switch tab {
-        case "discover": return "An editorial catalogue — no prices, ever. Brands, movements, and references worth your attention."
-        case "edu":      return "Daily Insight and the Daily Puzzle. Built to teach, never to sell."
-        case "planner":  return "Tell me where you're headed and I'll compose two or three ideas from your closet."
-        default:          return "Your fashion history — a grid of vibe-checks, with Items behind a toggle for power users."
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(title).serif(22, color: C.ink, tracking: -0.2)
-                Spacer()
-                Sym(name: "dots", size: 18, color: C.inkSoft)
+        ZStack {
+            switch tab {
+            case "discover": DiscoverFlow(tab: $tab, onCapture: onCapture)
+            case "edu":      EducationFlow(tab: $tab, onCapture: onCapture)
+            case "planner":  PlannerFlow(tab: $tab, onCapture: onCapture)
+            default:         WardrobeFlow(tab: $tab, onCapture: onCapture)
             }
-            .padding(.horizontal, 24).padding(.top, 12)
-
-            Text(blurb)
-                .sans(13, color: C.inkSoft, lineHeight: 1.55)
-                .padding(.leading, 12)
-                .overlay(alignment: .leading) { Rectangle().fill(C.paperLine).frame(width: 1) }
-                .padding(.horizontal, 24).padding(.top, 14)
-
-            Spacer()
-
-            VStack(alignment: .leading, spacing: 8) {
-                MonoMarker("round two")
-                Text("More of this, soon.")
-                    .serif(22, color: C.ink, tracking: -0.2, lineHeight: 1.2)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 24)
-
-            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
