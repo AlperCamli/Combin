@@ -34,6 +34,18 @@
 		00A0000000000000000001B9 /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001A9 /* CameraCaptureView.swift */; };
 		00A0000000000000000001BA /* VibeVoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001AA /* VibeVoice.swift */; };
 		00A0000000000000000001BB /* VibeCheckViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001AB /* VibeCheckViewModel.swift */; };
+		00A0000000000000000001BC /* StorageImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001AC /* StorageImage.swift */; };
+		00A0000000000000000001BD /* WardrobeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A0000000000000000001AD /* WardrobeViewModel.swift */; };
+		00A000000000000000002101 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 00A000000000000000002201 /* FirebaseCore */; };
+		00A000000000000000002102 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 00A000000000000000002202 /* FirebaseAppCheck */; };
+		00A000000000000000002103 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = 00A000000000000000002203 /* FirebaseRemoteConfig */; };
+		00A000000000000000002104 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 00A000000000000000002204 /* FirebaseAuth */; };
+		00A000000000000000002105 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 00A000000000000000002205 /* FirebaseStorage */; };
+		00A000000000000000002106 /* FirebaseVertexAI in Frameworks */ = {isa = PBXBuildFile; productRef = 00A000000000000000002206 /* FirebaseVertexAI */; };
+		00A000000000000000002107 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 00A000000000000000002207 /* FirebaseFirestore */; };
+		00A000000000000000002108 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 00A000000000000000002208 /* FirebaseFunctions */; };
+		00A000000000000000002109 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 00A000000000000000002209 /* FirebaseAnalytics */; };
+		00A00000000000000000210A /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 00A00000000000000000220A /* FirebaseCrashlytics */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -66,6 +78,9 @@
 		00A0000000000000000001A9 /* CameraCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
 		00A0000000000000000001AA /* VibeVoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VibeVoice.swift; sourceTree = "<group>"; };
 		00A0000000000000000001AB /* VibeCheckViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VibeCheckViewModel.swift; sourceTree = "<group>"; };
+		00A0000000000000000001AC /* StorageImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageImage.swift; sourceTree = "<group>"; };
+		00A0000000000000000001AD /* WardrobeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WardrobeViewModel.swift; sourceTree = "<group>"; };
+		00A000000000000000002301 /* Combin.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Combin.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,6 +88,16 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				00A000000000000000002106 /* FirebaseVertexAI in Frameworks */,
+				00A000000000000000002102 /* FirebaseAppCheck in Frameworks */,
+				00A000000000000000002104 /* FirebaseAuth in Frameworks */,
+				00A000000000000000002109 /* FirebaseAnalytics in Frameworks */,
+				00A000000000000000002101 /* FirebaseCore in Frameworks */,
+				00A00000000000000000210A /* FirebaseCrashlytics in Frameworks */,
+				00A000000000000000002107 /* FirebaseFirestore in Frameworks */,
+				00A000000000000000002108 /* FirebaseFunctions in Frameworks */,
+				00A000000000000000002103 /* FirebaseRemoteConfig in Frameworks */,
+				00A000000000000000002105 /* FirebaseStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -107,6 +132,7 @@
 				00A0000000000000000000A6 /* Screens */,
 				00A0000000000000000000EA /* Assets.xcassets */,
 				00A0000000000000000000A7 /* Resources */,
+				00A000000000000000002301 /* Combin.entitlements */,
 				00A0000000000000000000E9 /* Info.plist */,
 			);
 			path = Combin;
@@ -146,8 +172,18 @@
 			children = (
 				00A0000000000000000001C5 /* Camera */,
 				00A0000000000000000001C6 /* VibeCheckResult */,
+				00A0000000000000000001C7 /* Wardrobe */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		00A0000000000000000001C7 /* Wardrobe */ = {
+			isa = PBXGroup;
+			children = (
+				00A0000000000000000001AC /* StorageImage.swift */,
+				00A0000000000000000001AD /* WardrobeViewModel.swift */,
+			);
+			path = Wardrobe;
 			sourceTree = "<group>";
 		};
 		00A0000000000000000001C5 /* Camera */ = {
@@ -220,17 +256,56 @@
 				00A0000000000000000000C1 /* Sources */,
 				00A0000000000000000000C2 /* Frameworks */,
 				00A0000000000000000000C3 /* Resources */,
+				00A000000000000000002304 /* Upload dSYMs to Crashlytics */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = Combin;
+			packageProductDependencies = (
+				00A000000000000000002201 /* FirebaseCore */,
+				00A000000000000000002202 /* FirebaseAppCheck */,
+				00A000000000000000002203 /* FirebaseRemoteConfig */,
+				00A000000000000000002204 /* FirebaseAuth */,
+				00A000000000000000002205 /* FirebaseStorage */,
+				00A000000000000000002206 /* FirebaseVertexAI */,
+				00A000000000000000002207 /* FirebaseFirestore */,
+				00A000000000000000002208 /* FirebaseFunctions */,
+				00A000000000000000002209 /* FirebaseAnalytics */,
+				00A00000000000000000220A /* FirebaseCrashlytics */,
+			);
 			productName = Combin;
 			productReference = 00A0000000000000000000B2 /* Combin.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		00A000000000000000002304 /* Upload dSYMs to Crashlytics */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+			);
+			name = "Upload dSYMs to Crashlytics";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "PLIST_PATH=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nif [ ! -f \"$PLIST_PATH\" ]; then\n  echo \"Skipping Crashlytics dSYM upload: GoogleService-Info.plist not bundled.\"\n  exit 0\nfi\n\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXProject section */
 		00A0000000000000000000A1 /* Project object */ = {
@@ -254,6 +329,9 @@
 				Base,
 			);
 			mainGroup = 00A0000000000000000000A2;
+			packageReferences = (
+				00A000000000000000002001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			productRefGroup = 00A0000000000000000000A3 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -305,6 +383,8 @@
 				00A0000000000000000001B9 /* CameraCaptureView.swift in Sources */,
 				00A0000000000000000001BA /* VibeVoice.swift in Sources */,
 				00A0000000000000000001BB /* VibeCheckViewModel.swift in Sources */,
+				00A0000000000000000001BC /* StorageImage.swift in Sources */,
+				00A0000000000000000001BD /* WardrobeViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -375,8 +455,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Combin/Combin.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Combin/Info.plist;
@@ -399,8 +481,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Combin/Combin.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Combin/Info.plist;
@@ -440,6 +524,70 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		00A000000000000000002001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = exactVersion;
+				version = 11.9.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		00A000000000000000002201 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00A000000000000000002001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		00A000000000000000002202 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00A000000000000000002001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
+		};
+		00A000000000000000002203 /* FirebaseRemoteConfig */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00A000000000000000002001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseRemoteConfig;
+		};
+		00A000000000000000002204 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00A000000000000000002001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		00A000000000000000002205 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00A000000000000000002001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+		00A000000000000000002206 /* FirebaseVertexAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00A000000000000000002001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseVertexAI;
+		};
+		00A000000000000000002207 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00A000000000000000002001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		00A000000000000000002208 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00A000000000000000002001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
+		};
+		00A000000000000000002209 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00A000000000000000002001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		00A00000000000000000220A /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00A000000000000000002001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 00A0000000000000000000A1 /* Project object */;
 }

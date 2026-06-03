@@ -3,9 +3,13 @@
 //
 //  First-launch through first vibe-check. The trust screen carries more weight
 //  than any other screen here. Ported from screens-onboarding.jsx and
-//  screens-daily.jsx (S6 first result).
+//  screens-daily.jsx (S6 first result), then wired to the real capture + vibe-check
+//  loop (Phase 2).
 
 import SwiftUI
+import AVFoundation
+import Photos
+import UIKit
 
 // MARK: - S1 · Welcome
 
@@ -59,7 +63,8 @@ struct WelcomeView: View {
 
 struct TrustView: View {
     var onGotIt: () -> Void
-    var onMore: () -> Void
+
+    @State private var expanded = false
 
     private let items: [(icon: String, text: String)] = [
         ("lock",   "Your photos stay on your device when possible."),
@@ -70,36 +75,50 @@ struct TrustView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 0) {
-                MonoMarker("⟶ One thing first", tracking: 1.2)
-                    .padding(.bottom, 14)
-                Text("A few words on\nhow this works.")
-                    .serif(28, color: C.ink, tracking: -0.2, lineHeight: 1.15)
-            }
-            .padding(.horizontal, 28)
-            .padding(.top, 32)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        MonoMarker("⟶ About your photos", tracking: 1.2)
+                            .padding(.bottom, 14)
+                        Text("A few words on\nhow this works.")
+                            .serif(28, color: C.ink, tracking: -0.2, lineHeight: 1.15)
+                    }
+                    .padding(.horizontal, 28)
+                    .padding(.top, 32)
 
-            VStack(alignment: .leading, spacing: 22) {
-                ForEach(items, id: \.text) { it in
-                    HStack(alignment: .top, spacing: 14) {
-                        Sym(name: it.icon, size: 20, color: C.ink, stroke: 1.5)
-                            .padding(.top, 2)
-                        Text(it.text)
-                            .sans(15.5, color: C.ink, lineHeight: 1.45)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 22) {
+                        ForEach(items, id: \.text) { it in
+                            HStack(alignment: .top, spacing: 14) {
+                                Sym(name: it.icon, size: 20, color: C.ink, stroke: 1.5)
+                                    .padding(.top, 2)
+                                Text(it.text)
+                                    .sans(15.5, color: C.ink, lineHeight: 1.45)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 28)
+                    .padding(.top, 36)
+
+                    // "Tell me more" expands inline — never navigates away.
+                    if expanded {
+                        Text("In plain terms: when you ask for a vibe-check, your photo goes to Google's Gemini to read the outfit — over an encrypted connection, only for that read. It's not sold, not used for ads, and not used to train anyone's model. You can delete any photo, or all of them, whenever you like.")
+                            .sans(13.5, color: C.inkSoft, lineHeight: 1.55)
+                            .padding(.horizontal, 28)
+                            .padding(.top, 24)
+                            .transition(.opacity)
                     }
                 }
             }
-            .padding(.horizontal, 28)
-            .padding(.top, 36)
-
-            Spacer(minLength: 0)
 
             VStack(spacing: 8) {
                 Btn(title: "Got it", kind: .primary, action: onGotIt)
-                Btn(title: "Tell me more", kind: .ghost, action: onMore)
+                Btn(title: expanded ? "Show less" : "Tell me more", kind: .ghost) {
+                    withAnimation(.easeInOut(duration: 0.25)) { expanded.toggle() }
+                }
             }
             .padding(.horizontal, 28)
+            .padding(.top, 8)
             .padding(.bottom, 28)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -108,8 +127,11 @@ struct TrustView: View {
     }
 }
 
-// MARK: - S3 · Taste calibration
+// MARK: - S3 · Taste calibration  (DEFERRED — not wired into the MVP flow)
 
+/// Kept from the Tier-1 design but intentionally skipped in onboarding: taste
+/// calibration depends on the final style-vector axes, which aren't locked yet
+/// (plan Steps 1.7 / 2.3). Re-insert into `OnboardingFlow` once the axes are set.
 struct TasteView: View {
     var onContinue: () -> Void
 
@@ -193,79 +215,116 @@ struct TasteView: View {
 struct PermissionsView: View {
     var onContinue: () -> Void
 
+    @State private var requesting = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                MonoMarker("03 / 04", tracking: 1.2).padding(.bottom, 14)
-                Text("One small ask.")
+                MonoMarker("Almost there", tracking: 1.2).padding(.bottom, 14)
+                Text("To read your outfit,\nwe need to see it.")
                     .serif(26, color: C.ink, tracking: -0.2, lineHeight: 1.15)
-                Text("Optional. The app works without it. We'll ask about notifications later, once you're in the habit.")
+                Text("Camera for new photos, Photos for ones you already took. Optional — the app still works, and we'll ask about notifications later, once you're in the habit.")
                     .sans(13.5, color: C.inkSoft, lineHeight: 1.5)
                     .padding(.top, 8)
             }
             .padding(.horizontal, 28).padding(.top, 32)
 
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    HStack(spacing: 10) {
-                        Sym(name: "sun-cloud", size: 18, color: C.ink)
-                        Text("Location").font(F.sans(15, .medium)).foregroundStyle(C.ink)
-                    }
-                    Spacer()
-                    Button(action: onContinue) {
-                        Text("Allow")
-                            .font(F.sans(12, .medium)).foregroundStyle(C.ink)
-                            .padding(.vertical, 6).padding(.horizontal, 12)
-                            .hairline(C.paperLine, radius: R.card)
-                    }
-                    .buttonStyle(.plain)
-                }
-                Text("So we recommend based on the weather.")
-                    .sans(13.5, color: C.inkSoft, lineHeight: 1.45)
+            VStack(spacing: 12) {
+                permissionRow(icon: "camera", title: "Camera",
+                              detail: "For a quick photo of what you're wearing.")
+                permissionRow(icon: "gallery-sm", title: "Photos",
+                              detail: "To use one you've already taken.")
             }
-            .padding(.init(top: 18, leading: 18, bottom: 16, trailing: 18))
-            .hairline(C.paperLine, radius: R.card)
             .padding(.horizontal, 24).padding(.top, 28)
 
             Spacer(minLength: 0)
 
+            Btn(title: "Allow access", kind: .primary, action: requestAccess)
+                .padding(.horizontal, 28)
             Btn(title: "Maybe later", kind: .ghost, action: onContinue)
-                .padding(.horizontal, 28).padding(.bottom, 28)
+                .padding(.horizontal, 28).padding(.top, 8).padding(.bottom, 28)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(C.paper.ignoresSafeArea())
         .preferredColorScheme(.light)
+        .disabled(requesting)
+    }
+
+    private func permissionRow(icon: String, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Sym(name: icon, size: 18, color: C.ink, stroke: 1.5).padding(.top, 2)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(F.sans(15, .medium)).foregroundStyle(C.ink)
+                Text(detail).sans(13, color: C.inkSoft, lineHeight: 1.45)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.init(top: 16, leading: 16, bottom: 16, trailing: 16))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .hairline(C.paperLine, radius: R.card)
+    }
+
+    /// Standard iOS prompts. Either outcome continues — first-capture handles denial.
+    private func requestAccess() {
+        requesting = true
+        Task {
+            _ = await AVCaptureDevice.requestAccess(for: .video)
+            await requestPhotoLibrary()
+            await MainActor.run {
+                requesting = false
+                onContinue()
+            }
+        }
+    }
+
+    private func requestPhotoLibrary() async {
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { _ in cont.resume() }
+        }
     }
 }
 
 // MARK: - S5 · First photo capture
 
 struct FirstCaptureView: View {
-    var onCapture: () -> Void
+    var onCapture: (UIImage) -> Void
+
+    @StateObject private var camera = CameraController()
+    @State private var showPicker = false
+    @State private var capturing = false
+
+    private var liveCamera: Bool { camera.isAuthorized && camera.isAvailable }
 
     var body: some View {
         ZStack(alignment: .top) {
-            Photo(height: nil, tone: .char, label: "live camera viewport · front-facing", radius: 0, dark: true)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(
-                    LinearGradient(stops: [
-                        .init(color: .black.opacity(0.45), location: 0.0),
-                        .init(color: .black.opacity(0.05), location: 0.30),
-                        .init(color: .black.opacity(0.05), location: 0.60),
-                        .init(color: .black.opacity(0.70), location: 1.0),
-                    ], startPoint: .top, endPoint: .bottom)
-                )
-                .overlay(FrameGuide())
+            Group {
+                if liveCamera {
+                    CameraPreview(session: camera.session).ignoresSafeArea()
+                } else {
+                    Photo(height: nil, tone: .char, label: "camera unavailable here · use a recent photo",
+                          radius: 0, dark: true)
+                        .ignoresSafeArea()
+                }
+            }
+            .overlay(
+                LinearGradient(stops: [
+                    .init(color: .black.opacity(0.45), location: 0.0),
+                    .init(color: .black.opacity(0.05), location: 0.30),
+                    .init(color: .black.opacity(0.05), location: 0.60),
+                    .init(color: .black.opacity(0.70), location: 1.0),
+                ], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
+            )
+            .overlay(FrameGuide())
 
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
-                    MonoMarker("04 / 04 · First read", color: Overlay.paperWhite.opacity(0.55), tracking: 1.2)
+                    MonoMarker("First read", color: Overlay.paperWhite.opacity(0.55), tracking: 1.2)
                         .padding(.bottom, 10)
-                    Text("Check your fit")
+                    Text("Show me what you're\nwearing today.")
                         .serif(24, color: Overlay.paperWhite.opacity(0.92), tracking: -0.1, lineHeight: 1.18)
-                    Text("The outfit just needs to be visible.")
-                        .sans(13, color: Overlay.paperWhite.opacity(0.65))
+                    Text("Don't worry — someone else can take the photo for you. Just make sure the outfit's visible.")
+                        .sans(13, color: Overlay.paperWhite.opacity(0.65), lineHeight: 1.45)
                         .padding(.top, 8)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -274,16 +333,24 @@ struct FirstCaptureView: View {
                 Spacer(minLength: 0)
 
                 VStack(spacing: 10) {
-                    Button(action: onCapture) {
-                        Text("Take a photo")
-                            .font(F.sans(15, .medium)).foregroundStyle(C.ink)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14).padding(.horizontal, 20)
-                            .background(C.paper)
-                            .clipShape(RoundedRectangle(cornerRadius: R.card))
-                    }.buttonStyle(.plain)
-                    Button(action: onCapture) {
-                        Text("Use a recent one")
+                    Button(action: capture) {
+                        ZStack {
+                            Text("Take a photo")
+                                .font(F.sans(15, .medium)).foregroundStyle(C.ink)
+                                .opacity(capturing ? 0 : 1)
+                            if capturing { ProgressView().tint(C.ink) }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14).padding(.horizontal, 20)
+                        .background(C.paper)
+                        .clipShape(RoundedRectangle(cornerRadius: R.card))
+                        .opacity(liveCamera ? 1 : 0.4)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!liveCamera || capturing)
+
+                    Button { showPicker = true } label: {
+                        Text("or pick one from your photos")
                             .font(F.sans(15, .medium)).foregroundStyle(Overlay.paperWhite)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14).padding(.horizontal, 20)
@@ -295,15 +362,46 @@ struct FirstCaptureView: View {
         }
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
+        .task {
+            await camera.configure()
+            camera.start()
+        }
+        .onDisappear { camera.stop() }
+        .sheet(isPresented: $showPicker) {
+            PhotoPicker(onPick: { onCapture($0) }).ignoresSafeArea()
+        }
+    }
+
+    private func capture() {
+        guard liveCamera, !capturing else { return }
+        capturing = true
+        Task {
+            defer { capturing = false }
+            if let image = try? await camera.capture() { onCapture(image) }
+        }
     }
 }
 
 // MARK: - S6 · First vibe-check result
 
-/// Same as the standard vibe-check, but slightly warmer and with one tiny
-/// educational note. Ends on the handoff line that pivots into the app.
+/// The first vibe-check result. Same hero one-liner as the daily flow, but it ends
+/// on the onboarding handoff — gated on whether garments were actually extracted
+/// (plan Steps 2.6 / 2.7). Data-driven from the shared VibeCheckViewModel.
 struct FirstResultView: View {
+    @ObservedObject var vm: VibeCheckViewModel
+    var uid: String?
     var onShowCloset: () -> Void
+    var onSkip: () -> Void
+    var onRetry: () -> Void
+
+    private enum Extraction { case checking, found, none }
+    @State private var extraction: Extraction = .checking
+    private let wardrobe = WardrobeService()
+
+    private var failureMessage: String? {
+        if case .failed(let message) = vm.phase { return message }
+        return nil
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -315,39 +413,111 @@ struct FirstResultView: View {
             }
             .padding(.horizontal, 20).padding(.top, 8)
 
-            Photo(height: 210, tone: .ecru, label: "first photo · editorial inset")
+            outfitInset(height: 210)
                 .padding(.horizontal, 28).padding(.top, 8)
 
-            Text("Quiet confidence — the kind people remember without knowing why.")
+            Text(failureMessage ?? vm.revealedText)
                 .serif(26, color: C.ink, tracking: -0.15, lineHeight: 1.22)
+                .animation(.easeOut(duration: 0.15), value: vm.revealedText)
                 .padding(.horizontal, 28).padding(.top, 32)
 
-            VStack(alignment: .leading, spacing: 8) {
-                MonoMarker("a small note", color: C.accent)
-                Text("Linen reads softer than cotton in this light — the wrinkles you're worrying about are doing work for you.")
-                    .sans(13.5, color: C.inkSoft, lineHeight: 1.55)
-                    .padding(.leading, 12)
-                    .overlay(alignment: .leading) {
-                        Rectangle().fill(C.paperLine).frame(width: 1)
-                    }
+            if failureMessage == nil, vm.tweakReady, let tweak = vm.tweakText {
+                VStack(alignment: .leading, spacing: 8) {
+                    MonoMarker("one tweak", color: C.accent)
+                    Text(tweak)
+                        .sans(13.5, color: C.inkSoft, lineHeight: 1.55)
+                        .padding(.leading, 12)
+                        .overlay(alignment: .leading) { Rectangle().fill(C.paperLine).frame(width: 1) }
+                }
+                .padding(.horizontal, 28).padding(.top, 26)
+                .transition(.opacity)
             }
-            .padding(.horizontal, 28).padding(.top, 26)
 
             Spacer(minLength: 0)
 
-            (Text("I just learned a few pieces of your closet. ")
-                .foregroundStyle(C.ink)
-             + Text("Want to see?").foregroundStyle(C.accent))
-                .font(F.serif(16))
-                .tracking(-0.05)
-                .lineSpacing(16 * (1.35 - 1.25))
-                .padding(.horizontal, 28).padding(.top, 20)
-
-            Btn(title: "Show me my closet", kind: .primary, action: onShowCloset)
-                .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 28)
+            footer
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(C.paper.ignoresSafeArea())
         .preferredColorScheme(.light)
+        .task(id: pollKey) { await pollExtraction() }
+    }
+
+    // MARK: Footer (handoff / retry / failure)
+
+    @ViewBuilder private var footer: some View {
+        if failureMessage != nil {
+            Btn(title: "Try another photo", kind: .primary, action: onRetry)
+                .padding(.horizontal, 24).padding(.bottom, 28)
+        } else {
+            switch extraction {
+            case .checking:
+                Text("Adding what I can see to your closet…")
+                    .sans(13, color: C.inkMute)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.horizontal, 28).padding(.bottom, 28)
+
+            case .found:
+                (Text("I just learned a few pieces of your closet. ").foregroundStyle(C.ink)
+                 + Text("Want to see?").foregroundStyle(C.accent))
+                    .font(F.serif(16))
+                    .tracking(-0.05)
+                    .padding(.horizontal, 28).padding(.top, 4)
+                Btn(title: "Show me my closet", kind: .primary, action: onShowCloset)
+                    .padding(.horizontal, 24).padding(.top, 14).padding(.bottom, 28)
+
+            case .none:
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("This one was a little tricky to read — want to try another photo? Sometimes a different angle or better light makes all the difference.")
+                        .sans(14, color: C.ink, lineHeight: 1.5)
+                    HStack(spacing: 10) {
+                        Btn(title: "Try another photo", kind: .primary, action: onRetry)
+                        Btn(title: "Skip for now", kind: .outline, action: onSkip)
+                    }
+                }
+                .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 28)
+            }
+        }
+    }
+
+    @ViewBuilder private func outfitInset(height: CGFloat) -> some View {
+        if let image = vm.capturedImage {
+            Image(uiImage: image)
+                .resizable().scaledToFill()
+                .frame(maxWidth: .infinity).frame(height: height)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: R.card))
+        } else {
+            Photo(height: height, tone: .ecru, label: "first photo · editorial inset")
+        }
+    }
+
+    // MARK: Extraction poll (Step 2.7, Option A)
+
+    /// Re-runs when the vibe-check id arrives (it's written after Stage 2, later than
+    /// this screen appears) so we don't decide before the doc exists.
+    private var pollKey: String {
+        if failureMessage != nil { return "fail" }
+        if !FirebaseConfig.isConfigured { return "demo" }
+        return vm.vibeCheckId ?? "pending"
+    }
+
+    private func pollExtraction() async {
+        guard failureMessage == nil else { return }
+        extraction = .checking
+
+        // Demo / no-backend: show the closet handoff so onboarding still completes.
+        guard FirebaseConfig.isConfigured, let uid else {
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            if !Task.isCancelled { extraction = .found }
+            return
+        }
+
+        // Real mode: wait until the vibe-check has been saved (this task re-runs when
+        // vibeCheckId flips from nil), then poll the wardrobe for extracted items.
+        guard let vibeCheckId = vm.vibeCheckId else { return }  // stay .checking
+
+        let found = await wardrobe.awaitExtraction(uid: uid, vibeCheckId: vibeCheckId)
+        if !Task.isCancelled { extraction = found ? .found : .none }
     }
 }

@@ -9,15 +9,22 @@ import SwiftUI
 
 // MARK: - App state
 
+/// Where the app lands when onboarding finishes: the wardrobe (when the user took
+/// the "see your closet" handoff) or the camera (skip / dismiss).
+enum OnboardingDestination { case wardrobe, camera }
+
 @MainActor
 final class AppState: ObservableObject {
     private let key = "combin.onboarded"
     @Published var onboarded: Bool
+    /// Set by onboarding; consumed once by MainShell to choose the first screen.
+    @Published var initialLanding: OnboardingDestination = .camera
 
     init() {
         onboarded = UserDefaults.standard.bool(forKey: key)
     }
-    func completeOnboarding() {
+    func completeOnboarding(landing: OnboardingDestination) {
+        initialLanding = landing
         onboarded = true
         UserDefaults.standard.set(true, forKey: key)
     }
@@ -38,9 +45,9 @@ struct RootView: View {
             case .signedIn, .unavailable:
                 Group {
                     if app.onboarded {
-                        MainShell()
+                        MainShell(landing: app.initialLanding)
                     } else {
-                        OnboardingFlow(onFinish: { app.completeOnboarding() })
+                        OnboardingFlow(onFinish: { app.completeOnboarding(landing: $0) })
                     }
                 }
                 .transition(.opacity)
@@ -75,8 +82,14 @@ private struct SettingUpView: View {
 // MARK: - Journey 1 flow
 
 struct OnboardingFlow: View {
-    var onFinish: () -> Void
-    private enum Step { case welcome, trust, taste, permissions, capture, looking, result }
+    var onFinish: (OnboardingDestination) -> Void
+
+    @EnvironmentObject private var auth: AuthService
+    @StateObject private var vm = VibeCheckViewModel()
+
+    // Taste (2.3) is deferred, so the path is welcome → trust → permissions → capture.
+    // From .capture onward the screen follows vm.phase (idle → processing → result).
+    private enum Step { case welcome, trust, permissions, capture }
     @State private var step: Step = .welcome
 
     var body: some View {
@@ -85,25 +98,32 @@ struct OnboardingFlow: View {
             case .welcome:
                 WelcomeView(onContinue: { go(.trust) }).transition(.opacity)
             case .trust:
-                TrustView(onGotIt: { go(.taste) }, onMore: { go(.taste) }).transition(.opacity)
-            case .taste:
-                TasteView(onContinue: { go(.permissions) }).transition(.opacity)
+                TrustView(onGotIt: { go(.permissions) }).transition(.opacity)
             case .permissions:
                 PermissionsView(onContinue: { go(.capture) }).transition(.opacity)
             case .capture:
-                FirstCaptureView(onCapture: { go(.looking) }).transition(.opacity)
-            case .looking:
-                LookingView()
-                    .transition(.opacity)
-                    .task {
-                        try? await Task.sleep(nanoseconds: 1_900_000_000)
-                        go(.result)
-                    }
-            case .result:
-                FirstResultView(onShowCloset: onFinish).transition(.opacity)
+                captureStage.transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.42), value: step)
+        .animation(.easeInOut(duration: 0.42), value: vm.phase)
+    }
+
+    @ViewBuilder private var captureStage: some View {
+        switch vm.phase {
+        case .idle:
+            FirstCaptureView(onCapture: { image in vm.start(with: image, uid: auth.uid) })
+        case .processing:
+            LookingView(image: vm.capturedImage)
+        case .result, .failed:
+            FirstResultView(
+                vm: vm,
+                uid: auth.uid,
+                onShowCloset: { onFinish(.wardrobe) },
+                onSkip: { onFinish(.camera) },
+                onRetry: { vm.reset() }
+            )
+        }
     }
 
     private func go(_ s: Step) { withAnimation(.easeInOut(duration: 0.42)) { step = s } }
@@ -114,7 +134,13 @@ struct OnboardingFlow: View {
 struct MainShell: View {
     @EnvironmentObject private var auth: AuthService
     @State private var tab = "wardrobe"
-    @State private var cameraPresented = true   // camera-first on launch
+    @State private var cameraPresented: Bool
+
+    /// `.camera` (the default, and every normal relaunch) opens camera-first.
+    /// `.wardrobe` (the onboarding closet handoff) lands on the wardrobe tab.
+    init(landing: OnboardingDestination = .camera) {
+        _cameraPresented = State(initialValue: landing == .camera)
+    }
 
     var body: some View {
         TabWorld(tab: $tab, onCapture: { cameraPresented = true })

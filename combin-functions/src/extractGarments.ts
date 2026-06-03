@@ -30,7 +30,7 @@ interface Garment {
  * once the garments already exist.
  */
 export const extractGarments = onObjectFinalized(
-  { region: "europe-west1", memory: "256MiB" },
+  { region: "europe-west3", memory: "256MiB" },
   async (event) => {
     const objectPath = event.data.name ?? "";
     const match = objectPath.match(PHOTO_PATH);

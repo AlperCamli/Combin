@@ -21,6 +21,19 @@ final class WardrobeService {
         return snapshot.documents.compactMap { decode($0) }
     }
 
+    /// Most-recent vibe-checks (the wardrobe "Looks" grid — photo + one-liner).
+    func recentVibeChecks(uid: String, limit: Int = 60) async throws -> [VibeCheck] {
+        let snapshot = try await db.collection("users/\(uid)/vibeChecks")
+            .order(by: "createdAt", descending: true)
+            .limit(to: limit)
+            .getDocuments()
+        return snapshot.documents.compactMap { doc in
+            var vc = try? doc.data(as: VibeCheck.self)
+            vc?.id = doc.documentID
+            return vc
+        }
+    }
+
     /// Poll for items extracted from a specific vibe-check, up to `timeout` seconds.
     /// Returns true as soon as any item appears. Used by onboarding to decide between
     /// the "see your closet" handoff and the zero-extraction retry card.

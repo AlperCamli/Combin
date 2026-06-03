@@ -13,19 +13,24 @@ struct WardrobeFlow: View {
     @Binding var tab: String
     var onCapture: () -> Void
 
-    private enum Page { case root, detail }
+    @EnvironmentObject private var auth: AuthService
+    @StateObject private var vm = WardrobeViewModel()
+
+    private enum Page { case root, itemDetail }
     @State private var page: Page = .root
     @State private var mode = "Looks"
     @State private var correcting = false
+    @State private var lookDetail: VibeCheck?
 
     var body: some View {
         ZStack {
             switch page {
             case .root:
-                WardrobeRoot(mode: $mode, tab: $tab, onCapture: onCapture,
-                             onOpenItem: { withAnimation(.easeInOut(duration: 0.32)) { page = .detail } })
+                WardrobeRoot(vm: vm, mode: $mode, tab: $tab, onCapture: onCapture,
+                             onOpenLook: { lookDetail = $0 },
+                             onOpenItem: { withAnimation(.easeInOut(duration: 0.32)) { page = .itemDetail } })
                     .transition(.opacity)
-            case .detail:
+            case .itemDetail:
                 ItemDetailView(onBack: { withAnimation(.easeInOut(duration: 0.32)) { page = .root } },
                                onCorrect: { withAnimation(.easeInOut(duration: 0.3)) { correcting = true } })
                     .transition(.move(edge: .trailing))
@@ -36,18 +41,24 @@ struct WardrobeFlow: View {
                     .zIndex(2)
             }
         }
+        .task { await vm.load(uid: auth.uid) }
+        .fullScreenCover(item: $lookDetail) { look in
+            LookDetailView(look: look, onClose: { lookDetail = nil })
+        }
     }
 }
 
 // MARK: - Root (Looks grid + Items mode)
 
 private struct WardrobeRoot: View {
+    @ObservedObject var vm: WardrobeViewModel
     @Binding var mode: String
     @Binding var tab: String
     var onCapture: () -> Void
+    var onOpenLook: (VibeCheck) -> Void
     var onOpenItem: () -> Void
 
-    private let looks: [PhotoTone] = [.ecru, .warm, .olive, .char, .rust, .cool, .warm, .ecru, .char, .olive, .cool, .rust]
+    // Items mode is out of scope for the MVP — kept mocked behind the toggle.
     private let cats: [(name: String, count: Int, items: [PhotoTone])] = [
         ("tops", 14, [.ecru, .warm, .cool, .olive]),
         ("outerwear", 6, [.warm, .char, .olive]),
@@ -56,6 +67,8 @@ private struct WardrobeRoot: View {
     ]
     private let grid3 = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
     private let grid4 = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+
+    @State private var firstVisit = !UserDefaults.standard.bool(forKey: "combin.wardrobeVisited")
 
     var body: some View {
         VStack(spacing: 0) {
@@ -68,7 +81,7 @@ private struct WardrobeRoot: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    if mode == "Looks" {
+                    if mode == "Looks", firstVisit {
                         Text("This is what I caught from your photo. Every vibe-check adds to it.")
                             .serif(22, color: C.ink, tracking: -0.1, lineHeight: 1.25)
                             .padding(.horizontal, 28).padding(.top, 24).padding(.bottom, 8)
@@ -77,7 +90,7 @@ private struct WardrobeRoot: View {
                     HStack(alignment: .firstTextBaseline) {
                         MonoMarker("your fashion history", size: 10)
                         Spacer()
-                        MonoMarker(mode == "Looks" ? "1 look · 4 items" : "12 looks · 34 items", size: 10, tracking: 0.6)
+                        MonoMarker(countLabel, size: 10, tracking: 0.6)
                     }
                     .padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 14)
 
@@ -85,52 +98,9 @@ private struct WardrobeRoot: View {
                         .padding(.horizontal, 24).padding(.bottom, 14)
 
                     if mode == "Looks" {
-                        LazyVGrid(columns: grid3, spacing: 2) {
-                            ForEach(Array(looks.enumerated()), id: \.offset) { i, tone in
-                                Button(action: onOpenItem) {
-                                    Photo(height: 118, tone: tone, label: i == 0 ? "just now" : "", radius: 0)
-                                        .overlay(alignment: .topLeading) {
-                                            if i == 0 {
-                                                Text("JUST NOW")
-                                                    .font(F.mono(9)).tracking(0.8)
-                                                    .foregroundStyle(C.ink)
-                                                    .padding(.vertical, 3).padding(.horizontal, 6)
-                                                    .background(C.paper.opacity(0.92))
-                                                    .clipShape(RoundedRectangle(cornerRadius: R.input))
-                                                    .padding(6)
-                                            }
-                                        }
-                                        .overlay { if i > 0 { C.paper.opacity(0.55) } }
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.horizontal, 14)
-
-                        Text("Keep taking vibe-checks and this fills in. After a couple of weeks, I'll start spotting things you already own.")
-                            .sans(13, color: C.inkSoft, lineHeight: 1.55)
-                            .padding(.leading, 12)
-                            .overlay(alignment: .leading) { Rectangle().fill(C.paperLine).frame(width: 1) }
-                            .padding(.horizontal, 28).padding(.top, 22).padding(.bottom, 28)
+                        looksGrid
                     } else {
-                        VStack(alignment: .leading, spacing: 22) {
-                            ForEach(cats, id: \.name) { cat in
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack(alignment: .firstTextBaseline) {
-                                        MonoMarker(cat.name)
-                                        Spacer()
-                                        Text("\(cat.count)").font(F.mono(10)).foregroundStyle(C.inkMute)
-                                    }
-                                    LazyVGrid(columns: grid4, spacing: 6) {
-                                        ForEach(Array(cat.items.enumerated()), id: \.offset) { _, t in
-                                            Button(action: onOpenItem) { Photo(height: 78, tone: t, radius: R.input) }
-                                                .buttonStyle(.plain)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 24).padding(.top, 6).padding(.bottom, 16)
+                        itemsMocked
                     }
                 }
             }
@@ -138,6 +108,135 @@ private struct WardrobeRoot: View {
             TabBar(active: "wardrobe", onSelect: { tab = $0 }, onCapture: onCapture)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(C.paper.ignoresSafeArea())
+        .preferredColorScheme(.light)
+        .onAppear { UserDefaults.standard.set(true, forKey: "combin.wardrobeVisited") }
+    }
+
+    private var countLabel: String {
+        guard mode == "Looks" else { return "items coming soon" }
+        let n = vm.vibeChecks.count
+        return "\(n) look\(n == 1 ? "" : "s")"
+    }
+
+    @ViewBuilder private var looksGrid: some View {
+        if vm.loaded && vm.vibeChecks.isEmpty {
+            VStack(spacing: 8) {
+                Text("No looks yet.").serif(20, color: C.ink, tracking: -0.1)
+                Text("Take a vibe-check and it'll show up here.").sans(13, color: C.inkSoft)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 48).padding(.horizontal, 28)
+        } else {
+            LazyVGrid(columns: grid3, spacing: 2) {
+                ForEach(Array(vm.vibeChecks.enumerated()), id: \.offset) { i, vc in
+                    Button { onOpenLook(vc) } label: {
+                        StorageImage(gsURI: vc.photoStoragePath) {
+                            Rectangle().fill(C.paperDeep)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 118)
+                        .clipped()
+                        .overlay(alignment: .topLeading) {
+                            if i == 0 {
+                                Text("JUST NOW")
+                                    .font(F.mono(9)).tracking(0.8)
+                                    .foregroundStyle(C.ink)
+                                    .padding(.vertical, 3).padding(.horizontal, 6)
+                                    .background(C.paper.opacity(0.92))
+                                    .clipShape(RoundedRectangle(cornerRadius: R.input))
+                                    .padding(6)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 14)
+
+            if firstVisit {
+                Text("Keep taking vibe-checks and this fills in. After a couple of weeks, I'll start spotting things you already own.")
+                    .sans(13, color: C.inkSoft, lineHeight: 1.55)
+                    .padding(.leading, 12)
+                    .overlay(alignment: .leading) { Rectangle().fill(C.paperLine).frame(width: 1) }
+                    .padding(.horizontal, 28).padding(.top, 22).padding(.bottom, 28)
+            } else {
+                Color.clear.frame(height: 24)
+            }
+        }
+    }
+
+    @ViewBuilder private var itemsMocked: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            ForEach(cats, id: \.name) { cat in
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline) {
+                        MonoMarker(cat.name)
+                        Spacer()
+                        Text("\(cat.count)").font(F.mono(10)).foregroundStyle(C.inkMute)
+                    }
+                    LazyVGrid(columns: grid4, spacing: 6) {
+                        ForEach(Array(cat.items.enumerated()), id: \.offset) { _, t in
+                            Button(action: onOpenItem) { Photo(height: 78, tone: t, radius: R.input) }
+                                .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 24).padding(.top, 6).padding(.bottom, 16)
+    }
+}
+
+// MARK: - Look detail (Step 3.2 — the photo + the one-liner it earned)
+
+private struct LookDetailView: View {
+    let look: VibeCheck
+    var onClose: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button(action: onClose) { Sym(name: "chevron-d", size: 18, color: C.inkSoft, stroke: 1.6).frame(width: 36, height: 36) }
+                    .buttonStyle(.plain)
+                Spacer()
+                MonoMarker("a look")
+                Spacer()
+                Color.clear.frame(width: 36, height: 36)
+            }
+            .padding(.horizontal, 20).padding(.top, 8)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    StorageImage(gsURI: look.photoStoragePath) {
+                        Rectangle().fill(C.paperDeep)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 360)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: R.card))
+                    .padding(.horizontal, 28).padding(.top, 8)
+
+                    Text(look.stage1Text)
+                        .serif(24, color: C.ink, tracking: -0.15, lineHeight: 1.25)
+                        .padding(.horizontal, 28).padding(.top, 28)
+
+                    if let tweak = look.tweakText, !tweak.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            MonoMarker("one tweak", color: C.accent)
+                            Text(tweak)
+                                .sans(13.5, color: C.inkSoft, lineHeight: 1.55)
+                                .padding(.leading, 12)
+                                .overlay(alignment: .leading) { Rectangle().fill(C.paperLine).frame(width: 1) }
+                        }
+                        .padding(.horizontal, 28).padding(.top, 24)
+                    }
+
+                    Color.clear.frame(height: 40)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(C.paper.ignoresSafeArea())
         .preferredColorScheme(.light)
     }

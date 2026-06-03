@@ -12,7 +12,7 @@
 //     except transiently to Vertex AI.
 
 import Foundation
-import FirebaseAI
+import FirebaseVertexAI
 import FirebaseFirestore
 import FirebaseFunctions
 import FirebaseAnalytics
@@ -28,8 +28,11 @@ enum VibeCheckError: Error { case emptyResponse, notConfigured }
 
 final class VibeCheckService {
 
-    private let functionsRegion = "europe-west1"
-    private var ai: FirebaseAI { FirebaseAI.firebaseAI(backend: .vertexAI()) }
+    private let functionsRegion = "europe-west3"
+    // Gemini 3.x models aren't served from regional Vertex endpoints (us-central1
+    // 404s) — they live on the `global` endpoint. The default location is
+    // "us-central1", so we must request "global" explicitly.
+    private var ai: VertexAI { VertexAI.vertexAI(location: "global") }
     private var db: Firestore { Firestore.firestore() }
 
     // MARK: - Rate limit (called before Stage 1)
@@ -62,7 +65,7 @@ final class VibeCheckService {
         let start = Date()
         var full = ""
         // Stream to minimize time-to-first-token; we accumulate then parse the JSON.
-        let stream = model.generateContentStream(prompt, file)
+        let stream = try model.generateContentStream(prompt, file)
         for try await chunk in stream {
             if let text = chunk.text { full += text }
         }

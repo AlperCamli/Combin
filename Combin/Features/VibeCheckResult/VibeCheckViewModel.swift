@@ -96,6 +96,7 @@ final class VibeCheckViewModel: ObservableObject {
         do {
             upload = try await uploader.upload(data: data, uid: uid)
         } catch {
+            debugPrint("Combin · photo upload failed:", error)
             fail(VibeVoice.networkFailure); return
         }
 
@@ -108,7 +109,12 @@ final class VibeCheckViewModel: ObservableObject {
             s1 = try await stage1
         } catch {
             _ = try? await stage2  // let it settle before we leave scope
-            fail(VibeVoice.noOutfit)
+            // A THROWN error is a technical failure (API disabled, App Check, network,
+            // decode) — not the model reporting it can't see an outfit. The genuine
+            // "no outfit" case comes back as a successful Stage 1 sentence. Surface the
+            // real error so it's diagnosable, and show the connection-trouble copy.
+            debugPrint("Combin · Stage 1 failed:", error)
+            fail(VibeVoice.networkFailure)
             return
         }
         presentStage1(s1.text, confidence: s1.confidence)
@@ -116,7 +122,7 @@ final class VibeCheckViewModel: ObservableObject {
         // Stage 2 is non-fatal: the one-liner already landed.
         var s2: (response: Stage2Response, latency: Double)?
         do { s2 = try await stage2 } catch {
-            print("Stage 2 failed (non-fatal): \(error.localizedDescription)")
+            debugPrint("Combin · Stage 2 failed (non-fatal):", error)
         }
         if let s2 { presentStage2(s2.response) }
 

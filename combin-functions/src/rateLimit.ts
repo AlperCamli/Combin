@@ -8,6 +8,7 @@ import { db } from "./admin";
 // Remote Config — never by editing this constant.
 const DEFAULT_DAILY_LIMIT = 1000;
 const LIMIT_KEY = "daily_vibe_check_limit";
+const appCheckRequired = { enforceAppCheck: true };
 
 interface RateLimitResponse {
   allowed: boolean;
@@ -24,53 +25,56 @@ interface RateLimitResponse {
  * (1000) until launch. The client calls this BEFORE Stage 1; a rejection returns a
  * structured reason rather than throwing.
  */
-export const checkRateLimit = onCall(async (request): Promise<RateLimitResponse> => {
-  const uid = request.auth?.uid;
-  if (!uid) {
-    throw new HttpsError("unauthenticated", "Sign-in required to use Combin.");
-  }
-
-  const limit = await dailyLimit();
-  const date = utcDate();
-  const ref = db.doc(`users/${uid}/usage/daily`);
-
-  const decision = await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    const data = snap.data();
-    const isToday = data?.date === date;
-    const count = isToday ? (data?.vibeCheckCount ?? 0) : 0;
-
-    if (count >= limit) {
-      return { allowed: false, count };
+export const checkRateLimit = onCall(
+  appCheckRequired,
+  async (request): Promise<RateLimitResponse> => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "Sign-in required to use Combin.");
     }
 
-    tx.set(
-      ref,
-      {
-        date,
-        vibeCheckCount: isToday ? FieldValue.increment(1) : 1,
-        lastVibeCheckAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-    return { allowed: true, count: count + 1 };
-  });
+    const limit = await dailyLimit();
+    const date = utcDate();
+    const ref = db.doc(`users/${uid}/usage/daily`);
 
-  // Log EVERY decision (allowed + rejected), no user content, so we can analyze
-  // real usage before choosing a launch limit.
-  logger.info("rate_limit_decision", {
-    uid,
-    date,
-    allowed: decision.allowed,
-    count: decision.count,
-    limit,
-  });
+    const decision = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const data = snap.data();
+      const isToday = data?.date === date;
+      const count = isToday ? (data?.vibeCheckCount ?? 0) : 0;
 
-  if (!decision.allowed) {
-    return { allowed: false, reason: "daily_limit", limit, upgradeAvailable: true };
-  }
-  return { allowed: true, limit, remaining: Math.max(0, limit - decision.count) };
-});
+      if (count >= limit) {
+        return { allowed: false, count };
+      }
+
+      tx.set(
+        ref,
+        {
+          date,
+          vibeCheckCount: isToday ? FieldValue.increment(1) : 1,
+          lastVibeCheckAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      return { allowed: true, count: count + 1 };
+    });
+
+    // Log EVERY decision (allowed + rejected), no user content, so we can analyze
+    // real usage before choosing a launch limit.
+    logger.info("rate_limit_decision", {
+      uid,
+      date,
+      allowed: decision.allowed,
+      count: decision.count,
+      limit,
+    });
+
+    if (!decision.allowed) {
+      return { allowed: false, reason: "daily_limit", limit, upgradeAvailable: true };
+    }
+    return { allowed: true, limit, remaining: Math.max(0, limit - decision.count) };
+  },
+);
 
 /** Read the live limit from Remote Config, falling back to the dev default. */
 async function dailyLimit(): Promise<number> {

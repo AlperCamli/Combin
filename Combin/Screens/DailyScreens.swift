@@ -344,6 +344,11 @@ struct LookingView: View {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
+                // Pin to the container and clip; otherwise scaledToFill overflows and
+                // stretches the ZStack wider than the screen, shoving the leading-aligned
+                // sheet content off-screen left.
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
                 .overlay(Overlay.inkShadow.opacity(0.4))
                 .ignoresSafeArea()
         } else {

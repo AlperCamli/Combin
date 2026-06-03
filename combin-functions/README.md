@@ -43,5 +43,7 @@ npm run deploy              # functions + firestore:rules + storage rules
 - **`extractGarments` trigger**: fires on photo upload and polls for the matching
   vibe-check doc (the client writes garments after Stage 2). Alternative: switch to a
   Firestore `onDocumentCreated` trigger on `vibeChecks/{id}`. See the header comment.
-- **Region**: functions are pinned to `europe-west1` to sit near the `eur3` data.
+- **Region**: functions are pinned to `europe-west3` because Firestore and the
+  current Firebase default Storage bucket are in `europe-west3`, and Storage
+  triggers must match bucket region.
 - **Rate limit**: lives in Remote Config (`daily_vibe_check_limit`), default 1000.
