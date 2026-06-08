@@ -1,63 +1,49 @@
 //  AuthService.swift
 //  Combin · Services
 //
-//  Anonymous-first auth (plan Step 0.6). On cold start, if there's no current user,
-//  sign in anonymously. The uid is published for the rest of the app. The
-//  "Setting things up…" state shows only while the very first sign-in is in flight;
-//  later launches resume the persisted anonymous session instantly.
+//  Anonymous-first auth via Supabase. On cold start, if no persisted session is
+//  available, create an anonymous user and publish its uid for the rest of the app.
 
 import Foundation
-import FirebaseAuth
+import Supabase
 
 @MainActor
 final class AuthService: ObservableObject {
 
     enum State: Equatable {
-        case loading              // very first launch — anonymous sign-in in flight
-        case signedIn(String)     // uid available
-        case unavailable          // Firebase not configured (no plist) — UI-only mode
+        case loading
+        case signedIn(String)
+        case unavailable
     }
 
     @Published private(set) var state: State = .loading
     @Published private(set) var uid: String?
 
-    private var handle: AuthStateDidChangeListenerHandle?
-
     init() {
-        guard FirebaseConfig.isConfigured else {
-            // No backend yet — let the app run as the design-system UI.
+        guard SupabaseConfig.isConfigured else {
             state = .unavailable
             return
         }
 
-        handle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            // The listener fires off-actor; hop to the main actor to mutate state.
-            Task { @MainActor in self?.handleAuthChange(user) }
-        }
-    }
-
-    deinit {
-        if let handle { Auth.auth().removeStateDidChangeListener(handle) }
-    }
-
-    private func handleAuthChange(_ user: User?) {
-        if let user {
-            uid = user.uid
-            state = .signedIn(user.uid)
-            print("Combin auth: \(user.isAnonymous ? "anonymous " : "")uid \(user.uid)")
+        if let user = SupabaseConfig.requiredClient.auth.currentUser {
+            let id = user.id.uuidString.lowercased()
+            uid = id
+            state = .signedIn(id)
+            print("Combin auth: restored Supabase uid \(id)")
         } else {
-            uid = nil
             Task { await signInAnonymously() }
         }
     }
 
     private func signInAnonymously() async {
         do {
-            _ = try await Auth.auth().signInAnonymously()
-            // Success path is handled by the state listener.
+            let session = try await SupabaseConfig.requiredClient.auth.signInAnonymously()
+            let id = session.user.id.uuidString.lowercased()
+            uid = id
+            state = .signedIn(id)
+            print("Combin auth: anonymous Supabase uid \(id)")
         } catch {
-            print("Combin auth: anonymous sign-in failed — \(error.localizedDescription)")
-            // Stay in .loading; the listener will retry on next launch / connectivity.
+            print("Combin auth: anonymous sign-in failed - \(error.localizedDescription)")
         }
     }
 }

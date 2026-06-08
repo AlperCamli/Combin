@@ -1,5 +1,10 @@
 # Combin MVP — Implementation Plan for Claude Code
 
+> **Historical note (June 8, 2026):** this was the original Firebase MVP plan.
+> The current implementation has been migrated to Supabase Auth, Postgres/RLS,
+> Storage, and Edge Functions. Use `docs/core-loop-backend-flow.md` and
+> `docs/supabase-backend-flow.md` as the source of truth for backend architecture.
+
 > **For the Claude Code agent**: this is your build sheet. Execute phases in order. Each step is sized to be a self-contained unit of work. Stop and ask the human before moving between phases. Do not skip ahead — Phase 1 must be working end-to-end before Phase 2 begins, because Phase 2 wraps onboarding around the core loop and assumes it works.
 >
 > The six original `[DECISION POINT]` items have all been resolved (see "Decisions resolved" section at the bottom). The one remaining pending decision is the final list of style-vector axes — the human will signal when they're ready to lock those in, and at that point you should pause and ask for the exact axis names and rubric.
@@ -656,4 +661,3 @@ All six original `[DECISION POINT]` items have been answered. Here's the summary
 6. **Zero-extraction handling**: polling Option A. **For the first vibe-check specifically**, if extraction returns zero garments, invite a retry with a friendly card — no caps on retry attempts during onboarding.
 
 The one **new decision still pending** (not from the original list) is when the human will signal that the style axes are ready to be locked in. That triggers the un-deferring of Step 2.3 (taste calibration) and the refinement of Step 1.7's prompt.
-

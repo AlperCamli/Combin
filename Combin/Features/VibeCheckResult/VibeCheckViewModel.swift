@@ -1,12 +1,10 @@
 //  VibeCheckViewModel.swift
 //  Combin · Features/VibeCheckResult
 //
-//  Drives the core loop end-to-end (plan Steps 1.2–1.8): compress → upload →
-//  rate-limit → Stage 1 + Stage 2 in PARALLEL → display → save. The camera/looking/
-//  result screens observe this object; transitions are driven by real async state,
-//  not timers.
+//  Drives the core loop end-to-end: compress → upload to Supabase Storage →
+//  stream the backend-owned AI/persistence pipeline.
 //
-//  When Firebase isn't configured (no plist yet) or there's no uid, it runs a short
+//  When Supabase isn't configured or there's no uid, it runs a short
 //  canned "demo" so the UI is still exercisable on a machine without the backend.
 
 import SwiftUI
@@ -55,7 +53,7 @@ final class VibeCheckViewModel: ObservableObject {
 
         runTask = Task { [weak self] in
             guard let self else { return }
-            if FirebaseConfig.isConfigured, let uid {
+            if SupabaseConfig.isConfigured, let uid {
                 await self.run(image: image, uid: uid)
             } else {
                 await self.runDemo()
@@ -84,14 +82,6 @@ final class VibeCheckViewModel: ObservableObject {
             fail(VibeVoice.genericTrouble); return
         }
 
-        // Rate limit. During dev the function may be undeployed — don't block on that.
-        do {
-            let limit = try await service.checkRateLimit()
-            if !limit.allowed { fail(VibeVoice.rateLimit); return }
-        } catch {
-            print("checkRateLimit unavailable, proceeding: \(error.localizedDescription)")
-        }
-
         let upload: PhotoUploadService.Upload
         do {
             upload = try await uploader.upload(data: data, uid: uid)
@@ -100,61 +90,37 @@ final class VibeCheckViewModel: ObservableObject {
             fail(VibeVoice.networkFailure); return
         }
 
-        // Stage 1 and Stage 2 fire together the moment the upload lands.
-        async let stage1 = service.runStage1(gsURI: upload.gsURI)
-        async let stage2 = service.runStage2(gsURI: upload.gsURI)
-
-        let s1: (text: String, confidence: Double, latency: Double)
-        do {
-            s1 = try await stage1
-        } catch {
-            _ = try? await stage2  // let it settle before we leave scope
-            // A THROWN error is a technical failure (API disabled, App Check, network,
-            // decode) — not the model reporting it can't see an outfit. The genuine
-            // "no outfit" case comes back as a successful Stage 1 sentence. Surface the
-            // real error so it's diagnosable, and show the connection-trouble copy.
-            debugPrint("Combin · Stage 1 failed:", error)
-            fail(VibeVoice.networkFailure)
-            return
-        }
-        presentStage1(s1.text, confidence: s1.confidence)
-
-        // Stage 2 is non-fatal: the one-liner already landed.
-        var s2: (response: Stage2Response, latency: Double)?
-        do { s2 = try await stage2 } catch {
-            debugPrint("Combin · Stage 2 failed (non-fatal):", error)
-        }
-        if let s2 { presentStage2(s2.response) }
-
-        persist(upload: upload, text: s1.text, stage1Latency: s1.latency,
-                stage2: s2?.response, stage2Latency: s2?.latency, uid: uid)
-    }
-
-    private func persist(upload: PhotoUploadService.Upload,
-                         text: String,
-                         stage1Latency: Double,
-                         stage2: Stage2Response?,
-                         stage2Latency: Double?,
-                         uid: String) {
         let device = VibeCheck.DeviceInfo(
             os: "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)",
             model: UIDevice.current.model
         )
-        let doc = VibeCheck(
-            photoStoragePath: upload.gsURI,
-            stage1Text: text,
-            stage1Latency: stage1Latency,
-            tweakText: stage2?.tweak,
-            styleVector: stage2?.styleVector,
-            garments: stage2?.garments,
-            createdAt: Date(),
-            device: device,
-            stage2Latency: stage2Latency
-        )
+        var receivedStage1 = false
         do {
-            vibeCheckId = try service.save(doc, uid: uid)
+            for try await event in service.process(photoPath: upload.photoPath, device: device) {
+                switch event {
+                case .stage1(let stage1):
+                    receivedStage1 = true
+                    presentStage1(stage1.text, confidence: stage1.confidence)
+                case .stage2(let stage2):
+                    presentStage2(tweak: stage2.tweakText, styleVector: stage2.styleVector)
+                case .saved(let saved):
+                    vibeCheckId = saved.vibeCheckId
+                }
+            }
         } catch {
-            print("Saving vibe-check failed: \(error.localizedDescription)")
+            debugPrint("Combin · vibe-check stream failed:", error)
+            if !receivedStage1 {
+                if case VibeCheckError.rateLimited = error {
+                    fail(VibeVoice.rateLimit)
+                } else {
+                    fail(VibeVoice.networkFailure)
+                }
+            }
+            return
+        }
+
+        if !receivedStage1 {
+            fail(VibeVoice.networkFailure)
         }
     }
 
@@ -166,11 +132,12 @@ final class VibeCheckViewModel: ObservableObject {
         presentStage1("Three textures, one mood. That's the trick.", confidence: 0.82)
         try? await Task.sleep(nanoseconds: 1_500_000_000)
         guard !Task.isCancelled else { return }
-        presentStage2(Stage2Response(
+        let demo = Stage2Response(
             tweak: "Swap the belt for the olive one — it pulls the palette tighter without changing the silhouette.",
             styleVector: StyleVector(vibe: 72, formality: 60, colorfulness: 34, cohesion: 85, statementStrength: 40),
             garments: []
-        ))
+        )
+        presentStage2(tweak: demo.tweak, styleVector: demo.styleVector)
     }
 
     // MARK: - Presentation
@@ -182,10 +149,10 @@ final class VibeCheckViewModel: ObservableObject {
         startReveal()
     }
 
-    private func presentStage2(_ response: Stage2Response) {
-        styleVector = response.styleVector
+    private func presentStage2(tweak: String?, styleVector: StyleVector) {
+        self.styleVector = styleVector
         // A null/empty tweak means "you nailed it" — no card.
-        if let tweak = response.tweak, !tweak.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if let tweak, !tweak.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             tweakText = tweak
         } else {
             tweakText = nil

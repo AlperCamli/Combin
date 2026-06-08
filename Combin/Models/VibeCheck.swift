@@ -1,21 +1,22 @@
 //  VibeCheck.swift
 //  Combin · Models
 //
-//  The vibe-check document (plan Step 1.8) plus the two AI response shapes it's
-//  assembled from. One document per outfit photo, at users/{uid}/vibeChecks/{id}.
+//  A saved vibe-check row in Supabase plus the AI response shapes used by the
+//  Edge Function stream.
 
 import Foundation
 
 // MARK: - Stored document
 
 struct VibeCheck: Codable, Identifiable, Equatable {
-    var id: String?                       // Firestore document id, set on read
-    var photoStoragePath: String          // gs:// URI — also how the extractor finds this doc
+    var id: String?
+    var photoStoragePath: String
     var stage1Text: String
+    var stage1Confidence: Double?
     var stage1Latency: Double?
     var tweakText: String?
     var styleVector: StyleVector?
-    var garments: [Garment]?              // read by extractGarments, then fanned into wardrobe
+    var garments: [Garment]?
     var createdAt: Date?
     var device: DeviceInfo?
     var stage2Latency: Double?
@@ -26,8 +27,17 @@ struct VibeCheck: Codable, Identifiable, Equatable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case photoStoragePath, stage1Text, stage1Latency, tweakText
-        case styleVector, garments, createdAt, device, stage2Latency
+        case id
+        case photoStoragePath = "photo_path"
+        case stage1Text = "stage1_text"
+        case stage1Confidence = "stage1_confidence"
+        case stage1Latency = "stage1_latency_ms"
+        case tweakText = "tweak_text"
+        case styleVector = "style_vector"
+        case garments
+        case createdAt = "created_at"
+        case device
+        case stage2Latency = "stage2_latency_ms"
     }
 }
 

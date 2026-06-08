@@ -14,6 +14,21 @@ quick to add next.
 Open `Combin.xcodeproj` in Xcode 15+ and run on an iPhone simulator or device
 (portrait, iOS 17+). The shared **Combin** scheme is already set up.
 
+Backend mode is enabled by replacing the placeholder values in
+`Combin/Configuration/SupabaseConfig.plist` with the Supabase project URL and
+publishable key. Until then, the app intentionally runs in UI-only demo mode.
+
+The backend lives in `supabase/`:
+
+```bash
+supabase start
+supabase db reset
+supabase functions serve process-vibe-check --env-file supabase/.env.example
+```
+
+Set `GEMINI_MOCK=1` for local function runs without live Gemini calls. Set
+`GEMINI_API_KEY` for real Stage 1 / Stage 2 processing.
+
 > **Note for this machine only:** the Swift code compiles, links, and bundles
 > cleanly (verified with `xcodebuild`). If `xcodebuild` reports a
 > `CompileAssetCatalog` failure with *"Failed to locate any simulator runtime,"*
@@ -81,9 +96,15 @@ on UI, the vibe-check one-liner treated as a pull quote, "Looking…" as a momen
 Combin.xcodeproj
 Combin/
   CombinApp.swift            @main, font registration
+  Configuration/             Supabase config plist + client setup
   Info.plist                 portrait, UIAppFonts, usage strings
+  Services/                  Supabase auth, storage, function stream, DB reads
   DesignSystem/              tokens, typography, icons, components
   Screens/                   onboarding, daily, app flow + tab shell
   Resources/Fonts/           Newsreader · Geist · Geist Mono (.ttf)
   Assets.xcassets/           AppIcon (placeholder) · AccentColor (terracotta)
+supabase/
+  migrations/                Postgres tables, RLS, Storage policies, RPCs
+  functions/process-vibe-check/
+                             Edge Function for AI, persistence, wardrobe fan-out
 ```

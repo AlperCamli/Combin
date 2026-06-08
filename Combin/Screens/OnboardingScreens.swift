@@ -498,7 +498,7 @@ struct FirstResultView: View {
     /// this screen appears) so we don't decide before the doc exists.
     private var pollKey: String {
         if failureMessage != nil { return "fail" }
-        if !FirebaseConfig.isConfigured { return "demo" }
+        if !SupabaseConfig.isConfigured { return "demo" }
         return vm.vibeCheckId ?? "pending"
     }
 
@@ -507,7 +507,7 @@ struct FirstResultView: View {
         extraction = .checking
 
         // Demo / no-backend: show the closet handoff so onboarding still completes.
-        guard FirebaseConfig.isConfigured, let uid else {
+        guard SupabaseConfig.isConfigured, let uid else {
             try? await Task.sleep(nanoseconds: 800_000_000)
             if !Task.isCancelled { extraction = .found }
             return

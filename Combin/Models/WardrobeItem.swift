@@ -1,9 +1,8 @@
 //  WardrobeItem.swift
 //  Combin · Models
 //
-//  A single garment in the user's wardrobe. Written by the `extractGarments` Cloud
-//  Function (plan Step 1.9) from a vibe-check's `garments` array — no per-item crop;
-//  each item references the full source photo (`sourcePhotoStoragePath`).
+//  A single garment in the user's wardrobe. Written by the Supabase Edge Function
+//  from a vibe-check's `garments` array.
 
 import Foundation
 
@@ -16,20 +15,23 @@ struct Garment: Codable, Equatable {
     var attributes: [String: String]?
 }
 
-/// A wardrobe document at users/{uid}/wardrobe/{itemId}.
 struct WardrobeItem: Codable, Identifiable, Equatable {
-    var id: String?                       // Firestore document id, set on read
+    var id: String?
     var sourceVibeCheckId: String?
     var sourcePhotoStoragePath: String?
     var category: String?
     var type: String?
     var color: String?
+    var confidence: Double?
+    var attributes: [String: String]?
     var status: String?                   // "active"
     var createdAt: Date?
 
     enum CodingKeys: String, CodingKey {
-        case sourceVibeCheckId, sourcePhotoStoragePath
-        case category, type, color, status, createdAt
-        // `id` is the document id, supplied at read time — not a stored field.
+        case id
+        case sourceVibeCheckId = "source_vibe_check_id"
+        case sourcePhotoStoragePath = "source_photo_path"
+        case category, type, color, confidence, attributes, status
+        case createdAt = "created_at"
     }
 }

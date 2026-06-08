@@ -18,6 +18,6 @@ struct StyleVector: Codable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case vibe, formality, colorfulness, cohesion
-        case statementStrength = "statement_strength"  // Gemini + Firestore use snake_case
+        case statementStrength = "statement_strength"  // Gemini + Supabase use snake_case
     }
 }

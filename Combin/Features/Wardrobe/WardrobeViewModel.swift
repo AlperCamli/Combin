@@ -15,7 +15,7 @@ final class WardrobeViewModel: ObservableObject {
     private let service = WardrobeService()
 
     func load(uid: String?) async {
-        guard FirebaseConfig.isConfigured, let uid else {
+        guard SupabaseConfig.isConfigured, let uid else {
             loaded = true
             return
         }

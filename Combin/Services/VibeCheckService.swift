@@ -1,146 +1,129 @@
 //  VibeCheckService.swift
 //  Combin · Services
 //
-//  The Gemini orchestrator (plan Steps 1.5 / 1.7 / 1.8 / 1.10). Talks to Firebase AI
-//  Logic (Vertex AI backend), the rate-limit Cloud Function, and Firestore.
-//
-//  Invariants honored here:
-//   • Model names + prompts come from Remote Config (never hardcoded).
-//   • Every Gemini call uses structured output (responseSchema) → always valid JSON.
-//   • Stage 1 is streamed for time-to-first-token.
-//   • The photo is referenced by gs:// URI only; bytes never leave Cloud Storage
-//     except transiently to Vertex AI.
+//  Streams the backend-owned vibe-check pipeline from a Supabase Edge Function.
 
 import Foundation
-import FirebaseVertexAI
-import FirebaseFirestore
-import FirebaseFunctions
-import FirebaseAnalytics
+import Supabase
 
-struct RateLimitResult {
-    let allowed: Bool
-    let reason: String?
-    let limit: Int?
-    let upgradeAvailable: Bool
+enum VibeCheckError: Error {
+    case emptyResponse
+    case notConfigured
+    case rateLimited
+    case backend(String)
 }
 
-enum VibeCheckError: Error { case emptyResponse, notConfigured }
+struct Stage1StreamPayload: Codable, Equatable {
+    let text: String
+    let confidence: Double
+    let latencyMs: Int
+}
+
+struct Stage2StreamPayload: Codable, Equatable {
+    let tweakText: String?
+    let styleVector: StyleVector
+    let garments: [Garment]
+    let latencyMs: Int
+}
+
+struct SavedVibeCheckPayload: Codable, Equatable {
+    let vibeCheckId: String
+    let garmentsWritten: Int
+    let remaining: Int?
+}
+
+enum VibeCheckStreamEvent: Equatable {
+    case stage1(Stage1StreamPayload)
+    case stage2(Stage2StreamPayload)
+    case saved(SavedVibeCheckPayload)
+}
 
 final class VibeCheckService {
 
-    private let functionsRegion = "europe-west3"
-    // Gemini 3.x models aren't served from regional Vertex endpoints (us-central1
-    // 404s) — they live on the `global` endpoint. The default location is
-    // "us-central1", so we must request "global" explicitly.
-    private var ai: VertexAI { VertexAI.vertexAI(location: "global") }
-    private var db: Firestore { Firestore.firestore() }
-
-    // MARK: - Rate limit (called before Stage 1)
-
-    func checkRateLimit() async throws -> RateLimitResult {
-        let functions = Functions.functions(region: functionsRegion)
-        let response = try await functions.httpsCallable("checkRateLimit").call()
-        let data = response.data as? [String: Any] ?? [:]
-        return RateLimitResult(
-            allowed: data["allowed"] as? Bool ?? true,
-            reason: data["reason"] as? String,
-            limit: data["limit"] as? Int,
-            upgradeAvailable: data["upgradeAvailable"] as? Bool ?? false
+    func process(photoPath: String, device: VibeCheck.DeviceInfo) -> AsyncThrowingStream<VibeCheckStreamEvent, Error> {
+        let request = ProcessVibeCheckRequest(photoPath: photoPath, device: device)
+        let source = SupabaseConfig.requiredClient.functions._invokeWithStreamedResponse(
+            BackendConfig.processVibeCheckFunction,
+            options: FunctionInvokeOptions(method: .post, body: request)
         )
-    }
 
-    // MARK: - Stage 1 (the fast one-liner, streamed)
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                var buffer = ""
+                do {
+                    for try await chunk in source {
+                        buffer += String(decoding: chunk, as: UTF8.self)
+                        try Self.drainFrames(from: &buffer, continuation: continuation)
+                    }
 
-    func runStage1(gsURI: String) async throws -> (text: String, confidence: Double, latency: Double) {
-        let model = ai.generativeModel(
-            modelName: FirebaseConfig.string(FirebaseConfig.RCKey.stage1Model, fallback: "gemini-3.1-flash-lite"),
-            generationConfig: GenerationConfig(
-                responseMIMEType: "application/json",
-                responseSchema: Self.stage1Schema
-            )
-        )
-        let prompt = FirebaseConfig.string(FirebaseConfig.RCKey.stage1Prompt, fallback: PromptDefaults.stage1)
-        let file = FileDataPart(uri: gsURI, mimeType: "image/jpeg")
+                    if !buffer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                       let event = try Self.parseFrame(buffer) {
+                        continuation.yield(event)
+                    }
+                    continuation.finish()
+                } catch let FunctionsError.httpError(code, _) where code == 429 {
+                    continuation.finish(throwing: VibeCheckError.rateLimited)
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
 
-        let start = Date()
-        var full = ""
-        // Stream to minimize time-to-first-token; we accumulate then parse the JSON.
-        let stream = try model.generateContentStream(prompt, file)
-        for try await chunk in stream {
-            if let text = chunk.text { full += text }
+            continuation.onTermination = { _ in task.cancel() }
         }
-        let latency = Date().timeIntervalSince(start)
-
-        let parsed = try JSONDecoder().decode(Stage1Response.self, from: Data(full.utf8))
-        Analytics.logEvent("vibecheck_stage1", parameters: [
-            "latency_ms": Int(latency * 1000),
-            "confidence": parsed.confidence,
-        ])
-        return (parsed.vibeCheck, parsed.confidence, latency)
     }
 
-    // MARK: - Stage 2 (tweak + style vector + garments)
+    private struct ProcessVibeCheckRequest: Encodable {
+        let photoPath: String
+        let device: VibeCheck.DeviceInfo
+    }
 
-    func runStage2(gsURI: String) async throws -> (response: Stage2Response, latency: Double) {
-        let model = ai.generativeModel(
-            modelName: FirebaseConfig.string(FirebaseConfig.RCKey.stage2Model, fallback: "gemini-3.5-flash"),
-            generationConfig: GenerationConfig(
-                responseMIMEType: "application/json",
-                responseSchema: Self.stage2Schema
-            )
-        )
-        let prompt = FirebaseConfig.string(FirebaseConfig.RCKey.stage2Prompt, fallback: PromptDefaults.stage2)
-        let file = FileDataPart(uri: gsURI, mimeType: "image/jpeg")
-
-        let start = Date()
-        let result = try await model.generateContent(prompt, file)
-        let latency = Date().timeIntervalSince(start)
-
-        guard let text = result.text, let data = text.data(using: .utf8) else {
-            throw VibeCheckError.emptyResponse
+    private static func drainFrames(
+        from buffer: inout String,
+        continuation: AsyncThrowingStream<VibeCheckStreamEvent, Error>.Continuation
+    ) throws {
+        while let range = buffer.range(of: "\n\n") {
+            let frame = String(buffer[..<range.lowerBound])
+            buffer.removeSubrange(buffer.startIndex..<range.upperBound)
+            if let event = try parseFrame(frame) {
+                continuation.yield(event)
+            }
         }
-        let parsed = try JSONDecoder().decode(Stage2Response.self, from: data)
-        Analytics.logEvent("vibecheck_stage2", parameters: [
-            "latency_ms": Int(latency * 1000),
-            "garments": parsed.garments.count,
-        ])
-        return (parsed, latency)
     }
 
-    // MARK: - Save (Step 1.8)
+    private static func parseFrame(_ frame: String) throws -> VibeCheckStreamEvent? {
+        var eventName: String?
+        var dataLines: [String] = []
 
-    @discardableResult
-    func save(_ vibeCheck: VibeCheck, uid: String) throws -> String {
-        let ref = db.collection("users/\(uid)/vibeChecks").document()
-        // Offline persistence: this completes locally immediately and syncs later.
-        try ref.setData(from: vibeCheck)
-        return ref.documentID
+        for rawLine in frame.components(separatedBy: .newlines) {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            guard !line.isEmpty, !line.hasPrefix(":") else { continue }
+            if line.hasPrefix("event:") {
+                eventName = String(line.dropFirst("event:".count)).trimmingCharacters(in: .whitespaces)
+            } else if line.hasPrefix("data:") {
+                dataLines.append(String(line.dropFirst("data:".count)).trimmingCharacters(in: .whitespaces))
+            }
+        }
+
+        guard let eventName, !dataLines.isEmpty else { return nil }
+        let data = Data(dataLines.joined(separator: "\n").utf8)
+        let decoder = JSONDecoder()
+
+        switch eventName {
+        case "stage1":
+            return .stage1(try decoder.decode(Stage1StreamPayload.self, from: data))
+        case "stage2":
+            return .stage2(try decoder.decode(Stage2StreamPayload.self, from: data))
+        case "saved":
+            return .saved(try decoder.decode(SavedVibeCheckPayload.self, from: data))
+        case "error":
+            let payload = (try? decoder.decode(BackendErrorPayload.self, from: data))
+            throw VibeCheckError.backend(payload?.message ?? "Backend error")
+        default:
+            return nil
+        }
     }
 
-    // MARK: - Structured-output schemas
-
-    static let stage1Schema = Schema.object(properties: [
-        "vibe_check": .string(),
-        "confidence": .double(),
-    ])
-
-    static let stage2Schema = Schema.object(
-        properties: [
-            "tweak": .string(),
-            "style_vector": .object(properties: [
-                "vibe": .integer(),
-                "formality": .integer(),
-                "colorfulness": .integer(),
-                "cohesion": .integer(),
-                "statement_strength": .integer(),
-            ]),
-            "garments": .array(items: .object(properties: [
-                "category": .string(),
-                "type": .string(),
-                "color": .string(),
-                "confidence": .double(),
-            ])),
-        ],
-        optionalProperties: ["tweak"]
-    )
+    private struct BackendErrorPayload: Decodable {
+        let message: String?
+    }
 }

@@ -2,11 +2,26 @@
 .claude/
 DerivedData/
 .build/
+build/
+*.xcresult
 *.xcuserstate
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 **/xcuserdata/
 **/xcshareddata/WorkspaceSettings.xcsettings
 **/xcshareddata/IDEWorkspaceChecks.plist
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+supabase/.env
+supabase/.env.*
+!supabase/.env.example
+
+# Local Supabase CLI state
+supabase/.branches/
+supabase/.temp/
+
 firebase-debug.log
 GoogleService-Info.plist

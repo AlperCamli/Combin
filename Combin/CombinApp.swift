@@ -13,9 +13,8 @@ struct CombinApp: App {
     init() {
         // Belt-and-suspenders: fonts are also declared in Info.plist (UIAppFonts).
         F.registerBundledFonts()
-        // App Check + Firebase + Remote Config. No-ops (with a warning) until the
-        // GoogleService-Info.plist ships, so the UI still runs before the backend.
-        FirebaseConfig.configure()
+        // Supabase config no-ops until SupabaseConfig.plist has real project values.
+        SupabaseConfig.configure()
         // Constructed after configure() so it sees the configured state.
         _auth = StateObject(wrappedValue: AuthService())
     }

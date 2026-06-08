@@ -1,12 +1,9 @@
 //  StorageImage.swift
 //  Combin · Features/Wardrobe
 //
-//  Loads an image from a gs:// Cloud Storage path and shows a placeholder until it
-//  arrives, with a small in-memory cache so scrolling the Looks grid doesn't
-//  re-download. Storage reads are App Check-gated like everything else.
+//  Loads a private image from Supabase Storage and caches it in memory.
 
 import SwiftUI
-import FirebaseStorage
 import UIKit
 
 enum StorageImageCache {
@@ -17,28 +14,29 @@ enum StorageImageCache {
 final class StorageImageLoader: ObservableObject {
     @Published private(set) var image: UIImage?
 
-    func load(_ gsURI: String) async {
-        if let cached = StorageImageCache.shared.object(forKey: gsURI as NSString) {
+    func load(_ path: String) async {
+        if let cached = StorageImageCache.shared.object(forKey: path as NSString) {
             image = cached
             return
         }
-        guard image == nil else { return }
+        guard SupabaseConfig.isConfigured, image == nil else { return }
+
         do {
-            let ref = Storage.storage().reference(forURL: gsURI)
-            let data = try await ref.data(maxSize: 8 * 1024 * 1024)
+            let data = try await SupabaseConfig.requiredClient.storage
+                .from(BackendConfig.photoBucket)
+                .download(path: path)
             if let img = UIImage(data: data) {
-                StorageImageCache.shared.setObject(img, forKey: gsURI as NSString)
+                StorageImageCache.shared.setObject(img, forKey: path as NSString)
                 image = img
             }
         } catch {
-            debugPrint("Combin · StorageImage load failed for \(gsURI):", error)
+            debugPrint("Combin · StorageImage load failed for \(path):", error)
         }
     }
 }
 
-/// Fills its frame (`scaledToFill`); the caller is expected to set a frame and clip.
 struct StorageImage<Placeholder: View>: View {
-    let gsURI: String
+    let path: String
     @ViewBuilder var placeholder: () -> Placeholder
 
     @StateObject private var loader = StorageImageLoader()
@@ -53,6 +51,6 @@ struct StorageImage<Placeholder: View>: View {
                 placeholder()
             }
         }
-        .task(id: gsURI) { await loader.load(gsURI) }
+        .task(id: path) { await loader.load(path) }
     }
 }

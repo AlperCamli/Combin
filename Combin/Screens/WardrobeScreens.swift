@@ -131,7 +131,7 @@ private struct WardrobeRoot: View {
             LazyVGrid(columns: grid3, spacing: 2) {
                 ForEach(Array(vm.vibeChecks.enumerated()), id: \.offset) { i, vc in
                     Button { onOpenLook(vc) } label: {
-                        StorageImage(gsURI: vc.photoStoragePath) {
+                        StorageImage(path: vc.photoStoragePath) {
                             Rectangle().fill(C.paperDeep)
                         }
                         .frame(maxWidth: .infinity)
@@ -208,7 +208,7 @@ private struct LookDetailView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    StorageImage(gsURI: look.photoStoragePath) {
+                    StorageImage(path: look.photoStoragePath) {
                         Rectangle().fill(C.paperDeep)
                     }
                     .frame(maxWidth: .infinity)
