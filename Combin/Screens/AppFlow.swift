@@ -118,7 +118,6 @@ struct OnboardingFlow: View {
         case .result, .failed:
             FirstResultView(
                 vm: vm,
-                uid: auth.uid,
                 onShowCloset: { onFinish(.wardrobe) },
                 onSkip: { onFinish(.camera) },
                 onRetry: { vm.reset() }

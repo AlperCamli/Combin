@@ -58,7 +58,7 @@ private struct WardrobeRoot: View {
     var onOpenLook: (VibeCheck) -> Void
     var onOpenItem: () -> Void
 
-    // Items mode is out of scope for the MVP — kept mocked behind the toggle.
+    // Demo-mode stand-in only — real items come from Supabase (plan Step 3.3).
     private let cats: [(name: String, count: Int, items: [PhotoTone])] = [
         ("tops", 14, [.ecru, .warm, .cool, .olive]),
         ("outerwear", 6, [.warm, .char, .olive]),
@@ -99,6 +99,8 @@ private struct WardrobeRoot: View {
 
                     if mode == "Looks" {
                         looksGrid
+                    } else if SupabaseConfig.isConfigured {
+                        itemsGrid
                     } else {
                         itemsMocked
                     }
@@ -114,9 +116,13 @@ private struct WardrobeRoot: View {
     }
 
     private var countLabel: String {
-        guard mode == "Looks" else { return "items coming soon" }
-        let n = vm.vibeChecks.count
-        return "\(n) look\(n == 1 ? "" : "s")"
+        if mode == "Looks" {
+            let n = vm.vibeChecks.count
+            return "\(n) look\(n == 1 ? "" : "s")"
+        }
+        guard SupabaseConfig.isConfigured else { return "demo closet" }
+        let n = vm.items.count
+        return "\(n) piece\(n == 1 ? "" : "s")"
     }
 
     @ViewBuilder private var looksGrid: some View {
@@ -131,7 +137,7 @@ private struct WardrobeRoot: View {
             LazyVGrid(columns: grid3, spacing: 2) {
                 ForEach(Array(vm.vibeChecks.enumerated()), id: \.offset) { i, vc in
                     Button { onOpenLook(vc) } label: {
-                        StorageImage(path: vc.photoStoragePath) {
+                        StorageImage(path: vc.gridImagePath) {
                             Rectangle().fill(C.paperDeep)
                         }
                         .frame(maxWidth: .infinity)
@@ -164,6 +170,76 @@ private struct WardrobeRoot: View {
                 Color.clear.frame(height: 24)
             }
         }
+    }
+
+    // MARK: Items (Step 3.3 — extracted garments, grouped by category)
+
+    /// Stage 2's fan-out rows, grouped into the wardrobe's reading order. Manual
+    /// correction stays out of the MVP, so tiles are display-only.
+    private static let categoryOrder = ["outerwear", "top", "bottom", "footwear", "accessory"]
+
+    private var groupedItems: [(category: String, items: [WardrobeItem])] {
+        Dictionary(grouping: vm.items) { ($0.category ?? "other").lowercased() }
+            .sorted { a, b in
+                let ia = Self.categoryOrder.firstIndex(of: a.key) ?? Int.max
+                let ib = Self.categoryOrder.firstIndex(of: b.key) ?? Int.max
+                return (ia, a.key) < (ib, b.key)
+            }
+            .map { (category: $0.key, items: $0.value) }
+    }
+
+    @ViewBuilder private var itemsGrid: some View {
+        if vm.loaded && vm.items.isEmpty {
+            VStack(spacing: 8) {
+                Text("No pieces yet.").serif(20, color: C.ink, tracking: -0.1)
+                Text("Every vibe-check teaches me a few more things you own.")
+                    .sans(13, color: C.inkSoft)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 48).padding(.horizontal, 28)
+        } else {
+            VStack(alignment: .leading, spacing: 22) {
+                ForEach(groupedItems, id: \.category) { group in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .firstTextBaseline) {
+                            MonoMarker(group.category)
+                            Spacer()
+                            Text("\(group.items.count)").font(F.mono(10)).foregroundStyle(C.inkMute)
+                        }
+                        LazyVGrid(columns: grid4, spacing: 6) {
+                            ForEach(Array(group.items.enumerated()), id: \.offset) { _, item in
+                                itemTile(item)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 24).padding(.top, 6).padding(.bottom, 16)
+        }
+    }
+
+    private func itemTile(_ item: WardrobeItem) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            StorageImage(path: item.sourcePhotoStoragePath ?? "") {
+                Rectangle().fill(C.paperDeep)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 78)
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: R.input))
+
+            Text(itemLabel(item))
+                .font(F.sans(10.5))
+                .foregroundStyle(C.inkSoft)
+                .lineLimit(1)
+        }
+    }
+
+    private func itemLabel(_ item: WardrobeItem) -> String {
+        let parts = [item.color, item.type]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return parts.isEmpty ? (item.category ?? "piece") : parts.joined(separator: " ").lowercased()
     }
 
     @ViewBuilder private var itemsMocked: some View {
@@ -220,6 +296,17 @@ private struct LookDetailView: View {
                     Text(look.stage1Text)
                         .serif(24, color: C.ink, tracking: -0.15, lineHeight: 1.25)
                         .padding(.horizontal, 28).padding(.top, 28)
+
+                    if let summary = look.summary, !summary.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            MonoMarker("the longer read")
+                            Text(summary)
+                                .sans(13.5, color: C.inkSoft, lineHeight: 1.55)
+                                .padding(.leading, 12)
+                                .overlay(alignment: .leading) { Rectangle().fill(C.paperLine).frame(width: 1) }
+                        }
+                        .padding(.horizontal, 28).padding(.top, 24)
+                    }
 
                     if let tweak = look.tweakText, !tweak.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {

@@ -31,8 +31,15 @@ final class VibeCheckViewModel: ObservableObject {
     @Published private(set) var tweakText: String?
     @Published private(set) var tweakReady = false
     @Published private(set) var styleVector: StyleVector?
+    /// The longer read shown by the expanded "tell me more" view.
+    @Published private(set) var summary: String?
 
     @Published private(set) var vibeCheckId: String?
+
+    /// From the `saved` SSE event — how many garments Stage 2 fanned out into the
+    /// wardrobe. `nil` until persistence completes; drives the onboarding handoff
+    /// (plan Step 2.3) without polling the wardrobe table.
+    @Published private(set) var garmentsWritten: Int?
 
     /// The full one-liner (used by the expanded read, which may open before the
     /// word-by-word reveal has finished).
@@ -72,7 +79,9 @@ final class VibeCheckViewModel: ObservableObject {
         tweakText = nil
         tweakReady = false
         styleVector = nil
+        summary = nil
         vibeCheckId = nil
+        garmentsWritten = nil
     }
 
     // MARK: - Real pipeline
@@ -84,7 +93,8 @@ final class VibeCheckViewModel: ObservableObject {
 
         let upload: PhotoUploadService.Upload
         do {
-            upload = try await uploader.upload(data: data, uid: uid)
+            let thumbData = image.combinJPEGData(maxEdge: 512, quality: 0.6)
+            upload = try await uploader.upload(data: data, thumbData: thumbData, uid: uid)
         } catch {
             debugPrint("Combin · photo upload failed:", error)
             fail(VibeVoice.networkFailure); return
@@ -96,15 +106,16 @@ final class VibeCheckViewModel: ObservableObject {
         )
         var receivedStage1 = false
         do {
-            for try await event in service.process(photoPath: upload.photoPath, device: device) {
+            for try await event in service.process(photoPath: upload.photoPath, thumbPath: upload.thumbPath, device: device) {
                 switch event {
                 case .stage1(let stage1):
                     receivedStage1 = true
                     presentStage1(stage1.text, confidence: stage1.confidence)
                 case .stage2(let stage2):
-                    presentStage2(tweak: stage2.tweakText, styleVector: stage2.styleVector)
+                    presentStage2(tweak: stage2.tweakText, summary: stage2.summary, styleVector: stage2.styleVector)
                 case .saved(let saved):
                     vibeCheckId = saved.vibeCheckId
+                    garmentsWritten = saved.garmentsWritten
                 }
             }
         } catch {
@@ -115,12 +126,18 @@ final class VibeCheckViewModel: ObservableObject {
                 } else {
                     fail(VibeVoice.networkFailure)
                 }
+            } else if garmentsWritten == nil {
+                // Stage 1 landed but the save never confirmed — resolve the
+                // handoff as "nothing extracted" so onboarding doesn't hang.
+                garmentsWritten = 0
             }
             return
         }
 
         if !receivedStage1 {
             fail(VibeVoice.networkFailure)
+        } else if garmentsWritten == nil {
+            garmentsWritten = 0
         }
     }
 
@@ -134,10 +151,12 @@ final class VibeCheckViewModel: ObservableObject {
         guard !Task.isCancelled else { return }
         let demo = Stage2Response(
             tweak: "Swap the belt for the olive one — it pulls the palette tighter without changing the silhouette.",
-            styleVector: StyleVector(vibe: 72, formality: 60, colorfulness: 34, cohesion: 85, statementStrength: 40),
+            summary: "The cream layer is doing the anchoring here: it warms the frame and lets the darker pieces read as a choice, not a default. The palette stays in one conversation, and the proportions sit easy.",
+            styleVector: StyleVector(formality: 60, trendiness: 45, boldness: 38, colorfulness: 34, cohesion: 85),
             garments: []
         )
-        presentStage2(tweak: demo.tweak, styleVector: demo.styleVector)
+        presentStage2(tweak: demo.tweak, summary: demo.summary, styleVector: demo.styleVector)
+        garmentsWritten = 1  // demo: show the onboarding closet handoff
     }
 
     // MARK: - Presentation
@@ -149,8 +168,9 @@ final class VibeCheckViewModel: ObservableObject {
         startReveal()
     }
 
-    private func presentStage2(tweak: String?, styleVector: StyleVector) {
+    private func presentStage2(tweak: String?, summary: String?, styleVector: StyleVector) {
         self.styleVector = styleVector
+        self.summary = summary?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? summary : nil
         // A null/empty tweak means "you nailed it" — no card.
         if let tweak, !tweak.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             tweakText = tweak

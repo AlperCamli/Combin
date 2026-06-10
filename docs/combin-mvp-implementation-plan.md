@@ -328,50 +328,18 @@ session.
 
 # Backend Data Model
 
-## `app_config`
+Schema v2 (detailed outfit analysis, adopted from the human's rate-fit prototype
+without its scoring mechanics) is documented in `docs/data-model.md`. In brief:
 
-Stores server-readable JSON config:
-
-- `stage1_model`
-- `stage2_model`
-- `daily_vibe_check_limit`
-- prompt overrides when needed
-
-Clients may read app config only if needed; Gemini keys never live here.
-
-## `vibe_checks`
-
-Stores one row per completed backend processing attempt:
-
-- `user_id`
-- `photo_path`
-- `stage1_text`
-- `stage1_confidence`
-- `tweak_text`
-- `style_vector`
-- `garments`
-- `device`
-- latency fields
-- `created_at`
-
-## `wardrobe_items`
-
-Stores garment fan-out rows from Stage 2:
-
-- `user_id`
-- `source_vibe_check_id`
-- `source_photo_path`
-- `category`
-- `type`
-- `color`
-- `confidence`
-- `attributes`
-- `status`
-
-## `daily_usage`
-
-Stores daily counters used by `claim_daily_vibe_check(limit)`. The app should not
-write this table directly.
+- `app_config`: server-readable JSON config (models, prompts, daily limit,
+  temperature). Never contains secrets.
+- `vibe_checks`: one row per processing attempt — one-liner, tweak, longer-read
+  `summary`, 12-axis `style_vector`, `style_tags`, `occasion_fit`, `palette`,
+  `photo_quality`, `thumb_path`, model provenance, latency fields.
+- `wardrobe_items`: Stage 2 garment fan-out — category, type, subtype, color +
+  `colors` breakdown, pattern, material_guess, fit, confidence, stylist comment.
+- `daily_usage`: daily counters used by `claim_daily_vibe_check(limit)`. The app
+  should not write this table directly.
 
 ---
 
@@ -557,5 +525,8 @@ Zero garments extracted on first photo:
 8. **Wardrobe extraction:** Stage 2 garments fan out into `wardrobe_items`; no
    Storage-trigger polling race.
 9. **Taste calibration:** deferred until style axes are finalized.
-10. **Style vector axes:** start with the placeholder axes used by the current
-    backend; pause for human review before locking final production axes.
+10. **Style vector axes:** locked to the twelve axes from the human's rate-fit
+    prototype (`outfit_analysis`): formality, trendiness, boldness, colorfulness,
+    cohesion, layering_complexity, accessory_density,
+    silhouette_relaxed_vs_tailored, seasonality_warmth, contrast,
+    monochrome_index, neutral_ratio. Internal-only, 0-100, never user-facing.

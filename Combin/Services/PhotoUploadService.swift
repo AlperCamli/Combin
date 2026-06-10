@@ -10,14 +10,33 @@ final class PhotoUploadService {
 
     struct Upload: Equatable {
         let photoPath: String
+        let thumbPath: String?
         let photoId: String
     }
 
     private let pendingKey = "combin.pendingUploads"
 
-    func upload(data: Data, uid: String) async throws -> Upload {
+    /// Uploads the full photo (required) and a small grid thumbnail (best-effort —
+    /// a failed thumb never fails the vibe-check).
+    func upload(data: Data, thumbData: Data? = nil, uid: String) async throws -> Upload {
         let photoId = UUID().uuidString
-        return try await upload(data: data, uid: uid, photoId: photoId)
+        let upload = try await upload(data: data, uid: uid, photoId: photoId)
+
+        guard let thumbData else { return upload }
+        let thumbPath = "\(uid)/photos/\(photoId)_thumb.jpg"
+        do {
+            try await SupabaseConfig.requiredClient.storage
+                .from(BackendConfig.photoBucket)
+                .upload(
+                    thumbPath,
+                    data: thumbData,
+                    options: FileOptions(contentType: "image/jpeg", upsert: false)
+                )
+            return Upload(photoPath: upload.photoPath, thumbPath: thumbPath, photoId: photoId)
+        } catch {
+            debugPrint("Combin · thumb upload failed (continuing without):", error)
+            return upload
+        }
     }
 
     private func upload(data: Data, uid: String, photoId: String) async throws -> Upload {
@@ -31,7 +50,7 @@ final class PhotoUploadService {
                     data: data,
                     options: FileOptions(contentType: "image/jpeg", upsert: false)
                 )
-            return Upload(photoPath: path, photoId: photoId)
+            return Upload(photoPath: path, thumbPath: nil, photoId: photoId)
         } catch {
             enqueuePending(data: data, photoId: photoId)
             throw error

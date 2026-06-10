@@ -21,7 +21,11 @@ struct Stage1StreamPayload: Codable, Equatable {
 
 struct Stage2StreamPayload: Codable, Equatable {
     let tweakText: String?
+    let summary: String?
     let styleVector: StyleVector
+    let styleTags: [String]?
+    let palette: [ColorReading]?
+    let photoQuality: PhotoQuality?
     let garments: [Garment]
     let latencyMs: Int
 }
@@ -40,8 +44,8 @@ enum VibeCheckStreamEvent: Equatable {
 
 final class VibeCheckService {
 
-    func process(photoPath: String, device: VibeCheck.DeviceInfo) -> AsyncThrowingStream<VibeCheckStreamEvent, Error> {
-        let request = ProcessVibeCheckRequest(photoPath: photoPath, device: device)
+    func process(photoPath: String, thumbPath: String?, device: VibeCheck.DeviceInfo) -> AsyncThrowingStream<VibeCheckStreamEvent, Error> {
+        let request = ProcessVibeCheckRequest(photoPath: photoPath, thumbPath: thumbPath, device: device)
         let source = SupabaseConfig.requiredClient.functions._invokeWithStreamedResponse(
             BackendConfig.processVibeCheckFunction,
             options: FunctionInvokeOptions(method: .post, body: request)
@@ -74,6 +78,7 @@ final class VibeCheckService {
 
     private struct ProcessVibeCheckRequest: Encodable {
         let photoPath: String
+        let thumbPath: String?
         let device: VibeCheck.DeviceInfo
     }
 

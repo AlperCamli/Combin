@@ -386,17 +386,20 @@ struct FirstCaptureView: View {
 
 /// The first vibe-check result. Same hero one-liner as the daily flow, but it ends
 /// on the onboarding handoff — gated on whether garments were actually extracted
-/// (plan Steps 2.6 / 2.7). Data-driven from the shared VibeCheckViewModel.
+/// (plan Steps 2.3 / 2.4). Driven entirely by the `saved` event the backend streams
+/// through the shared VibeCheckViewModel; no wardrobe polling.
 struct FirstResultView: View {
     @ObservedObject var vm: VibeCheckViewModel
-    var uid: String?
     var onShowCloset: () -> Void
     var onSkip: () -> Void
     var onRetry: () -> Void
 
     private enum Extraction { case checking, found, none }
-    @State private var extraction: Extraction = .checking
-    private let wardrobe = WardrobeService()
+
+    private var extraction: Extraction {
+        guard let count = vm.garmentsWritten else { return .checking }
+        return count > 0 ? .found : .none
+    }
 
     private var failureMessage: String? {
         if case .failed(let message) = vm.phase { return message }
@@ -440,7 +443,7 @@ struct FirstResultView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(C.paper.ignoresSafeArea())
         .preferredColorScheme(.light)
-        .task(id: pollKey) { await pollExtraction() }
+        .animation(.easeInOut(duration: 0.3), value: vm.garmentsWritten)
     }
 
     // MARK: Footer (handoff / retry / failure)
@@ -490,34 +493,5 @@ struct FirstResultView: View {
         } else {
             Photo(height: height, tone: .ecru, label: "first photo · editorial inset")
         }
-    }
-
-    // MARK: Extraction poll (Step 2.7, Option A)
-
-    /// Re-runs when the vibe-check id arrives (it's written after Stage 2, later than
-    /// this screen appears) so we don't decide before the doc exists.
-    private var pollKey: String {
-        if failureMessage != nil { return "fail" }
-        if !SupabaseConfig.isConfigured { return "demo" }
-        return vm.vibeCheckId ?? "pending"
-    }
-
-    private func pollExtraction() async {
-        guard failureMessage == nil else { return }
-        extraction = .checking
-
-        // Demo / no-backend: show the closet handoff so onboarding still completes.
-        guard SupabaseConfig.isConfigured, let uid else {
-            try? await Task.sleep(nanoseconds: 800_000_000)
-            if !Task.isCancelled { extraction = .found }
-            return
-        }
-
-        // Real mode: wait until the vibe-check has been saved (this task re-runs when
-        // vibeCheckId flips from nil), then poll the wardrobe for extracted items.
-        guard let vibeCheckId = vm.vibeCheckId else { return }  // stay .checking
-
-        let found = await wardrobe.awaitExtraction(uid: uid, vibeCheckId: vibeCheckId)
-        if !Task.isCancelled { extraction = found ? .found : .none }
     }
 }

@@ -497,6 +497,16 @@ struct ExpandedView: View {
                         .serif(22, color: C.ink, tracking: -0.1, lineHeight: 1.25)
                         .padding(.bottom, 18)
 
+                    if let summary = vm.summary {
+                        MonoMarker("the longer read")
+                            .padding(.top, 6)
+                            .overlay(alignment: .top) { Rectangle().fill(C.paperLine).frame(height: 0.5) }
+                            .padding(.bottom, 10)
+                        Text(summary)
+                            .serif(16, color: C.ink, lineHeight: 1.55)
+                            .padding(.bottom, 18)
+                    }
+
                     if let tweak = vm.tweakText {
                         MonoMarker("one tweak")
                             .padding(.top, 6)
@@ -507,8 +517,10 @@ struct ExpandedView: View {
                             .padding(.bottom, 18)
                     }
 
-                    Text("That's the gist for now — a fuller read is on its way.")
-                        .sans(13, color: C.inkMute, lineHeight: 1.5)
+                    if vm.summary == nil {
+                        Text("That's the gist for now — a fuller read is on its way.")
+                            .sans(13, color: C.inkMute, lineHeight: 1.5)
+                    }
 
                     Color.clear.frame(height: 40)
                 }

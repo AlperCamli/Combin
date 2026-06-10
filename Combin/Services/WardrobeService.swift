@@ -28,21 +28,4 @@ final class WardrobeService {
             .execute()
             .value
     }
-
-    func awaitExtraction(uid: String, vibeCheckId: String, timeout: TimeInterval = 5) async -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            let items: [WardrobeItem]? = try? await SupabaseConfig.requiredClient
-                .from("wardrobe_items")
-                .select("id")
-                .eq("user_id", value: uid)
-                .eq("source_vibe_check_id", value: vibeCheckId)
-                .limit(1)
-                .execute()
-                .value
-            if let items, !items.isEmpty { return true }
-            try? await Task.sleep(nanoseconds: 700_000_000)
-        }
-        return false
-    }
 }
